@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AhmedAliraqi\UiManager;
 
+use AhmedAliraqi\UiManager\Console\InstallCommand;
 use AhmedAliraqi\UiManager\Console\MakeUiPageCommand;
 use AhmedAliraqi\UiManager\Console\MakeUiSectionCommand;
 use AhmedAliraqi\UiManager\Services\MediaUploadService;
@@ -51,6 +52,7 @@ class UiManagerServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
+                InstallCommand::class,
                 MakeUiPageCommand::class,
                 MakeUiSectionCommand::class,
             ]);

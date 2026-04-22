@@ -57,6 +57,16 @@ Any field can be marked translatable with `->translatable()`. The stored value b
 ### Select field label access
 `SelectField` stores the option **key** by default. Call `->label()` on `FieldValueData` to get the human-readable label. Use `->returnLabel()` on the field definition to make `getString()` return the label automatically.
 
+## Installation
+
+After adding the package via Composer, a single Artisan command handles everything:
+
+```bash
+php artisan ui-manager:install
+```
+
+This publishes the config, publishes the dashboard assets, and runs migrations. The `--force` flag overwrites previously published files.
+
 ## How data flows
 
 ```

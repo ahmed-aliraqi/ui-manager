@@ -27,28 +27,9 @@ A production-ready, class-driven UI management system for Laravel. Define your U
 composer require ahmed-aliraqi/ui-manager
 ```
 
-Publish and run migrations:
-
 ```bash
-php artisan vendor:publish --tag=ui-manager-migrations
-php artisan migrate
+php artisan ui-manager:install
 ```
-
-Publish the config (optional):
-
-```bash
-php artisan vendor:publish --tag=ui-manager-config
-```
-
-Publish the pre-built dashboard assets to `public/vendor/ui-manager`:
-
-```bash
-php artisan vendor:publish --tag=ui-manager-assets
-```
-
-> The dashboard frontend is pre-compiled and ships inside the package — no `npm install` or build step is required in your application.
-
----
 
 ## Configuration
 
@@ -253,6 +234,82 @@ Field::file('cv')
     ->multiple(false)
 ```
 
+### Color
+
+```php
+Field::color('brand_color')
+    ->format('hex')   // hex | rgb | hsl
+    ->default('#3b82f6')
+```
+
+### Date / Time / DateTime
+
+```php
+Field::date('launch_date')->default('2025-01-01')
+Field::time('open_at')->default('09:00')
+Field::datetime('published_at')
+```
+
+### Date Range
+
+```php
+Field::dateRange('sale_period')
+// Stored as { "start": "2025-06-01", "end": "2025-06-30" }
+// Access: $field->getString() returns "2025-06-01 – 2025-06-30"
+```
+
+### URL
+
+```php
+Field::url('website')->default('https://example.com')
+// Access: $field->getUrl() returns the validated URL string
+```
+
+### Price
+
+```php
+Field::price('ticket_price')
+// Stored as { "amount": "49.99", "currency": "USD" }
+// Access: $field->amount(), $field->currency()
+```
+
+### Translatable fields
+
+Any field can be marked translatable — the dashboard shows a tab per configured locale and the stored value becomes a locale-keyed object.
+
+```php
+// config/ui-manager.php
+'locales'        => ['en', 'ar'],
+'default_locale' => 'en',
+```
+
+```php
+Field::text('title')->translatable()->label('Page Title'),
+Field::textarea('body')->translatable(),
+```
+
+```php
+// Blade — resolves current app locale automatically:
+ui()->section('hero')->field('title')        // → "Welcome"
+
+// Explicit locale:
+ui()->section('hero')->field('title:ar')     // → "أهلاً"
+```
+
+### Select — key vs label
+
+```php
+Field::select('status')
+    ->options(['draft' => 'Draft', 'published' => 'Published'])
+    ->returnLabel()   // getString() returns "Published" instead of "published"
+```
+
+```php
+$field = ui()->section('post')->field('status');
+echo $field->getString();   // → "Published"  (returnLabel enabled)
+echo $field->label();       // → "Published"  (always returns human label)
+```
+
 ### Common builder methods (all field types)
 
 ```php
@@ -423,6 +480,13 @@ php artisan make:ui-section SocialLinks --page="App\Ui\Pages\Home" --repeatable
 php artisan make:ui-section Hero --layout=marketing
 ```
 
+### Install
+
+```bash
+php artisan ui-manager:install          # publish config + assets, run migrations
+php artisan ui-manager:install --force  # overwrite previously published files
+```
+
 ---
 
 ## Extending the Package
@@ -530,10 +594,18 @@ src/
 │   ├── Field.php              Static factory (entry point)
 │   ├── BaseField.php          Fluent builder base
 │   ├── TextField.php
+│   ├── TextareaField.php
 │   ├── EditorField.php
 │   ├── SelectField.php
 │   ├── ImageField.php
-│   └── FileField.php
+│   ├── FileField.php
+│   ├── ColorField.php
+│   ├── DateField.php
+│   ├── TimeField.php
+│   ├── DatetimeField.php
+│   ├── DateRangeField.php
+│   ├── UrlField.php
+│   └── PriceField.php
 ├── Models/
 │   ├── UiContent.php          Stores section field data
 │   └── UiMedia.php            Uploaded file records
@@ -567,6 +639,7 @@ src/
 │   └── Requests/
 │       └── SaveSectionRequest.php
 ├── Console/
+│   ├── InstallCommand.php
 │   ├── MakeUiPageCommand.php
 │   └── MakeUiSectionCommand.php
 └── UiManagerServiceProvider.php

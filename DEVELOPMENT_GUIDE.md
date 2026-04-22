@@ -368,17 +368,36 @@ $this->app->extend(UiManager::class, function (UiManager $manager) {
 
 ---
 
-## Publishing package assets
+## Installation
+
+Run the install command after adding the package:
 
 ```bash
-# Config
-php artisan vendor:publish --tag=ui-manager-config
-
-# Migrations (optional — package auto-loads them)
-php artisan vendor:publish --tag=ui-manager-migrations
-
-# Dashboard assets (required for production)
-php artisan vendor:publish --tag=ui-manager-assets
+php artisan ui-manager:install
 ```
 
-Migrations include: `ui_contents`, `ui_media_files`, and `media` (Spatie). Run `php artisan migrate` after publishing.
+This single command:
+1. Publishes `config/ui-manager.php` to the host application
+2. Publishes the pre-built dashboard assets to `public/vendor/ui-manager/`
+3. Runs `php artisan migrate` to create the required tables
+
+Use `--force` to overwrite previously published files:
+
+```bash
+php artisan ui-manager:install --force
+```
+
+### Manual publishing (optional)
+
+If you need granular control over what gets published:
+
+```bash
+# Config only
+php artisan vendor:publish --tag=ui-manager-config
+
+# Dashboard assets only
+php artisan vendor:publish --tag=ui-manager-assets
+
+# Migrations (package auto-loads them, only needed to customise)
+php artisan vendor:publish --tag=ui-manager-migrations
+```
