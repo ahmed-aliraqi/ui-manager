@@ -13,6 +13,9 @@ class SelectField extends BaseField
 
     protected bool $searchable = false;
 
+    /** When true, getString() returns the option label instead of the stored key. */
+    protected bool $returnLabel = false;
+
     /**
      * @param array<string|int, string> $options  key => label
      */
@@ -35,6 +38,29 @@ class SelectField extends BaseField
         $this->searchable = $value;
 
         return $this;
+    }
+
+    /**
+     * Make getString() return the option label instead of the stored key.
+     */
+    public function returnLabel(): static
+    {
+        $this->returnLabel = true;
+
+        return $this;
+    }
+
+    public function isReturnLabel(): bool
+    {
+        return $this->returnLabel;
+    }
+
+    /**
+     * @return array<string|int, string>
+     */
+    public function getFieldOptions(): array
+    {
+        return $this->fieldOptions;
     }
 
     public function getType(): string

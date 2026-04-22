@@ -13,9 +13,11 @@ final class DashboardController extends Controller
     {
         return view('ui-manager::dashboard', [
             'config' => [
-                'title'      => config('ui-manager.dashboard.title', 'UI Manager'),
-                'homeButton' => config('ui-manager.dashboard.home_button'),
-                'apiBase'    => url(config('ui-manager.routes.api_prefix', 'ui-manager/api')),
+                'title'         => config('ui-manager.dashboard.title', 'UI Manager'),
+                'homeButton'    => config('ui-manager.dashboard.home_button'),
+                'apiBase'       => url(config('ui-manager.routes.api_prefix', 'ui-manager/api')),
+                'locales'       => config('ui-manager.locales', ['en']),
+                'defaultLocale' => config('ui-manager.default_locale', 'en'),
             ],
             'assets' => $this->resolveAssets(),
         ]);

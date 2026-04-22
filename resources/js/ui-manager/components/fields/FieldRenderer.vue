@@ -19,8 +19,40 @@
       </button>
     </div>
 
-    <!-- Field component -->
+    <!-- Translatable field: render locale tabs + input per locale -->
+    <div v-if="field.translatable" class="border rounded-md overflow-hidden">
+      <!-- Locale tab bar -->
+      <div class="flex border-b bg-muted/40">
+        <button
+          v-for="locale in locales"
+          :key="locale"
+          type="button"
+          @click="activeLocale = locale"
+          :class="[
+            'px-3 py-1.5 text-xs font-medium uppercase tracking-wide transition-colors',
+            activeLocale === locale
+              ? 'bg-background text-foreground border-b-2 border-primary -mb-px'
+              : 'text-muted-foreground hover:text-foreground',
+          ]"
+        >
+          {{ locale }}
+        </button>
+      </div>
+      <!-- Input for the active locale -->
+      <div class="p-3">
+        <component
+          :is="fieldComponent"
+          :id="fieldId + '-' + activeLocale"
+          :field="field"
+          :modelValue="localeValue"
+          @update:modelValue="updateLocaleValue"
+        />
+      </div>
+    </div>
+
+    <!-- Non-translatable field -->
     <component
+      v-else
       :is="fieldComponent"
       :id="fieldId"
       :field="field"
@@ -34,8 +66,9 @@
 </template>
 
 <script setup>
-import { computed, inject } from 'vue'
+import { computed, inject, ref } from 'vue'
 import { CopyIcon } from 'lucide-vue-next'
+import { useLocales } from '../../composables/useConfig.js'
 import TextFieldComponent from './TextFieldComponent.vue'
 import TextareaFieldComponent from './TextareaFieldComponent.vue'
 import EditorFieldComponent from './EditorFieldComponent.vue'
@@ -43,7 +76,6 @@ import SelectFieldComponent from './SelectFieldComponent.vue'
 import ImageFieldComponent from './ImageFieldComponent.vue'
 import FileFieldComponent from './FileFieldComponent.vue'
 import ColorFieldComponent from './ColorFieldComponent.vue'
-import SvgFieldComponent from './SvgFieldComponent.vue'
 import DateFieldComponent from './DateFieldComponent.vue'
 import TimeFieldComponent from './TimeFieldComponent.vue'
 import DatetimeFieldComponent from './DatetimeFieldComponent.vue'
@@ -56,11 +88,30 @@ const props = defineProps({
   modelValue: { default: null },
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue'])
+
+const { locales, defaultLocale } = useLocales()
+const activeLocale = ref(defaultLocale)
 
 const sectionName = inject('sectionName', 'section')
 const fieldId = computed(() => `field-${sectionName}-${props.field.name}`)
 const isRequired = computed(() => props.field.rules?.includes('required'))
+
+// Current locale value from the locale-keyed object stored in modelValue.
+const localeValue = computed(() => {
+  const val = props.modelValue
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    return val[activeLocale.value] ?? ''
+  }
+  return typeof val === 'string' ? val : ''
+})
+
+function updateLocaleValue(newVal) {
+  const current = (props.modelValue && typeof props.modelValue === 'object' && !Array.isArray(props.modelValue))
+    ? { ...props.modelValue }
+    : {}
+  emit('update:modelValue', { ...current, [activeLocale.value]: newVal })
+}
 
 const fieldComponent = computed(() => {
   switch (props.field.type) {
@@ -70,7 +121,6 @@ const fieldComponent = computed(() => {
     case 'image':      return ImageFieldComponent
     case 'file':       return FileFieldComponent
     case 'color':      return ColorFieldComponent
-    case 'svg':        return SvgFieldComponent
     case 'date':       return DateFieldComponent
     case 'time':       return TimeFieldComponent
     case 'datetime':   return DatetimeFieldComponent

@@ -14,7 +14,6 @@ namespace AhmedAliraqi\UiManager\Fields;
  *   Field::image('cover')
  *   Field::file('cv')->accept(['application/pdf'])
  *   Field::color('bg_color')
- *   Field::svg('icon')
  *   Field::date('published_at')
  *   Field::time('start_time')
  *   Field::datetime('event_at')
@@ -57,11 +56,6 @@ final class Field
     public static function color(string $name): ColorField
     {
         return new ColorField($name);
-    }
-
-    public static function svg(string $name): SvgField
-    {
-        return new SvgField($name);
     }
 
     public static function date(string $name): DateField

@@ -20,12 +20,18 @@ final class SectionItemView
 
     public function field(string $name): FieldValueData
     {
+        // Parse optional locale suffix, e.g. "title:ar" → name="title", locale="ar".
+        $locale = null;
+        if (str_contains($name, ':')) {
+            [$name, $locale] = explode(':', $name, 2);
+        }
+
         $fieldsMap = $this->definition->getFieldsMap();
         $fieldDef  = $fieldsMap[$name] ?? Field::text($name);
         $rawValue  = $this->data[$name] ?? $fieldDef->getDefault();
 
         // Variables are intentionally disabled inside repeatable items.
-        return new FieldValueData($name, $rawValue, $fieldDef, parseVariables: false);
+        return new FieldValueData($name, $rawValue, $fieldDef, parseVariables: false, locale: $locale);
     }
 
     /** @return array<string, mixed> */

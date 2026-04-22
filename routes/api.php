@@ -5,7 +5,6 @@ declare(strict_types=1);
 use AhmedAliraqi\UiManager\Http\Controllers\Api\MediaController;
 use AhmedAliraqi\UiManager\Http\Controllers\Api\PageController;
 use AhmedAliraqi\UiManager\Http\Controllers\Api\SectionController;
-use AhmedAliraqi\UiManager\Http\Controllers\Api\SvgController;
 use AhmedAliraqi\UiManager\Http\Controllers\Api\VariableController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +28,3 @@ Route::delete('media/{media}', [MediaController::class, 'destroy'])->name('ui-ma
 
 // Variables
 Route::get('variables', [VariableController::class, 'index'])->name('ui-manager.api.variables.index');
-
-// SVG icon picker
-Route::get('svg-icons', [SvgController::class, 'index'])->name('ui-manager.api.svg-icons.index');

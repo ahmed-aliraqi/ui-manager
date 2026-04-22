@@ -11,7 +11,9 @@ src/
 ├── Exceptions/       UiManagerException
 ├── Facades/          Ui (points to UiManager)
 ├── Fields/           BaseField, Field (factory), TextField, TextareaField,
-│                     EditorField, SelectField, ImageField, FileField
+│                     EditorField, SelectField, ImageField, FileField,
+│                     ColorField, DateField, TimeField, DatetimeField,
+│                     DateRangeField, UrlField, PriceField
 ├── Http/
 │   ├── Controllers/
 │   │   ├── Api/      PageController, SectionController, MediaController, VariableController
@@ -75,6 +77,62 @@ Field::text('title')
 ```
 
 `toArray()` serialises the field definition to JSON for the Vue frontend.
+
+#### Field types and their storage format
+
+| Class | `getType()` | Stored value |
+|---|---|---|
+| `TextField` | `text` | string |
+| `TextareaField` | `textarea` | string |
+| `EditorField` | `editor` | HTML string |
+| `SelectField` | `select` | string (option key) |
+| `ImageField` | `image` | `{ id, url, filename }` |
+| `FileField` | `file` | `{ id, url, filename }` |
+| `ColorField` | `color` | string (hex/rgb/hsl) |
+| `DateField` | `date` | `YYYY-MM-DD` string |
+| `TimeField` | `time` | `HH:MM` string |
+| `DatetimeField` | `datetime` | ISO datetime string |
+| `DateRangeField` | `date_range` | `{ start, end }` strings |
+| `UrlField` | `url` | URL string |
+| `PriceField` | `price` | `{ amount, currency }` |
+
+#### `DTOs\FieldValueData` — type-specific accessors
+
+| Method | Returns | Notes |
+|---|---|---|
+| `getString()` | `string` | Variables resolved; arrays return `''` |
+| `getUrl()` | `string` | Media URL; falls back to Spatie live lookup |
+| `label()` | `string` | Option label for SelectField; `''` for others |
+| `amount()` | `float\|null` | Price amount; `null` for non-PriceField |
+| `currency()` | `string` | Stored currency or field default; `''` for non-PriceField |
+| `isMedia()` | `bool` | `true` for ImageField / FileField |
+| `isEmpty()` | `bool` | `true` when `null`, `''`, or `[]` |
+
+#### Translatable fields
+
+Any field can be marked translatable:
+
+```php
+Field::text('title')->translatable()
+```
+
+- `isTranslatable(): bool` — true after calling `translatable()`
+- `toArray()` includes `"translatable": true` so the Vue dashboard renders locale tab inputs
+- Stored value in DB: `{ "en": "Hello", "ar": "مرحبا" }`
+- `FieldValueData::getValue()` resolves the correct locale automatically (app locale → `default_locale` fallback → first available)
+- Explicit locale: `SectionView::field('title:ar')` parses the `:locale` suffix
+
+#### Select field label access
+
+```php
+Field::select('status')
+    ->options(['draft' => 'Draft', 'published' => 'Published'])
+    ->returnLabel()     // optional: makes getString() return the label
+```
+
+- `getFieldOptions(): array` — returns the `key => label` map
+- `isReturnLabel(): bool` — true after calling `returnLabel()`
+- `FieldValueData::label(): string` — always returns the option label for the stored key
 
 ## Section discovery
 

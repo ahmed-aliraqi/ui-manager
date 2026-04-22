@@ -124,6 +124,12 @@ If `VariableRegistry::resolve($key)` finds no registered resolver, it returns th
 
 `VariableParser::parse()` operates on strings only. `FieldValueData::getValue()` skips parsing if `rawValue` is not a string (e.g. arrays for image/select fields).
 
+### Translatable fields and variables
+
+For a translatable field, `FieldValueData::getValue()` first resolves the locale-appropriate string, **then** passes it through `VariableParser`. This means translatable field values can themselves contain `%variable%` placeholders — they are expanded after locale resolution.
+
+A variable placeholder referencing a translatable field (`%section.field%`) resolves the value for the **current app locale** at the moment `VariableParser` calls `getString()`. The resolved locale is therefore determined by the request locale, not the locale of the outer field being parsed.
+
 ### Performance
 
 Variable resolution runs at request time and is not cached separately. For performance-sensitive sites, enable the section cache (`ui-manager.cache.enabled = true`) — this caches the *raw* field values; variable resolution still runs per-request but the DB query is avoided.

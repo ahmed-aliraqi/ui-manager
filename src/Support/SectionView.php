@@ -21,14 +21,24 @@ final class SectionView
 
     /**
      * Return a typed FieldValueData object for a given field name.
+     *
+     * Supports an optional locale suffix for translatable fields:
+     *   field('title')     → current app locale
+     *   field('title:ar')  → Arabic value
      */
     public function field(string $name): FieldValueData
     {
+        // Parse optional locale suffix, e.g. "title:ar" → name="title", locale="ar".
+        $locale = null;
+        if (str_contains($name, ':')) {
+            [$name, $locale] = explode(':', $name, 2);
+        }
+
         $fieldsMap = $this->definition->getFieldsMap();
         $fieldDef  = $fieldsMap[$name] ?? $this->makeDummyField($name);
         $rawValue  = $this->data[$name] ?? $fieldDef->getDefault();
 
-        return new FieldValueData($name, $rawValue, $fieldDef);
+        return new FieldValueData($name, $rawValue, $fieldDef, locale: $locale);
     }
 
     /**

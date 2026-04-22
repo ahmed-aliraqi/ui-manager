@@ -116,6 +116,17 @@ Files are **not uploaded when selected**. Instead:
 
 This means abandoned edits never waste storage.
 
+## Translatable fields in the dashboard
+
+When a field definition includes `"translatable": true` (serialised from `->translatable()`), `FieldRenderer` renders a **locale tab bar** above the field input. Each tab corresponds to a locale from `window.__UI_MANAGER_CONFIG__.locales`.
+
+- The active locale determines which input is shown.
+- The model value for a translatable field is a plain JS object `{ en: "...", ar: "..." }`.
+- `SectionForm` initialises each translatable field as a locale-keyed object, pre-populating existing values from the DB and filling missing locales with empty strings.
+- On save, the locale object is sent to the API as-is; the PHP backend stores it verbatim in the `fields` JSON column.
+
+Locales and the default locale are injected from `config('ui-manager.locales')` via `DashboardController` into `window.__UI_MANAGER_CONFIG__` and consumed through `composables/useConfig.js → useLocales()`.
+
 ## Pinia store (`stores/ui.js`)
 
 | Action | API call |

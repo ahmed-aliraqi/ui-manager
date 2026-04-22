@@ -57,9 +57,29 @@ Standard Spatie Media Library table — included in package migrations for zero-
     "id": 42,
     "url": "http://example.com/storage/ui-manager/images/photo.jpg",
     "filename": "hero.jpg"
+  },
+  "translatable_title": {
+    "en": "Welcome",
+    "ar": "أهلاً"
+  },
+  "status": "published"
+}
+```
+
+### Translatable field storage
+
+When a field is marked with `->translatable()`, its stored value is a **locale-keyed object**:
+
+```json
+{
+  "title": {
+    "en": "Hello World",
+    "ar": "مرحبا بالعالم"
   }
 }
 ```
+
+Non-translatable fields store a plain scalar value as before. Old plain-string values for a field that has since been marked translatable are handled gracefully — returned as-is for the current locale.
 
 ### Repeatable section item (each row)
 
@@ -67,10 +87,10 @@ Standard Spatie Media Library table — included in package migrations for zero-
 {
   "label": "Facebook",
   "url": "https://facebook.com/acme",
-  "icon": {
+  "logo": {
     "id": 7,
-    "url": "http://example.com/storage/ui-manager/images/fb.svg",
-    "filename": "fb.svg"
+    "url": "http://example.com/storage/ui-manager/images/fb.png",
+    "filename": "fb.png"
   }
 }
 ```

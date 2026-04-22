@@ -6,6 +6,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Multi-language / Translatable Fields
+    |--------------------------------------------------------------------------
+    | List all locale codes the dashboard should show inputs for.
+    | default_locale is used as a fallback when the requested locale has no value.
+    */
+    'locales' => ['en'],
+
+    'default_locale' => 'en',
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Layout
     |--------------------------------------------------------------------------
     | The default layout name used when a section does not declare one.
@@ -70,19 +81,6 @@ return [
     'media' => [
         'disk'       => 'public',
         'collection' => 'ui-manager',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | SVG Icon Picker
-    |--------------------------------------------------------------------------
-    | Absolute path to the directory containing .svg icon files.
-    | The API endpoint (GET /api/svg-icons) reads this directory and returns
-    | icon names + content to the dashboard.
-    | FieldValueData::toSvg() also uses this path.
-    */
-    'svg' => [
-        'icons_path' => null, // null = resource_path('ui-icons') at runtime
     ],
 
     /*

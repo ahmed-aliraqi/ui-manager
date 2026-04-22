@@ -140,6 +140,104 @@ php artisan make:ui-page ContactPage
 
 ---
 
+## Multi-language / Translatable fields
+
+### Config
+
+In `config/ui-manager.php`, set the locales your application supports:
+
+```php
+'locales'        => ['en', 'ar'],
+'default_locale' => 'en',
+```
+
+The dashboard will render locale tab inputs for every configured locale.
+
+### Field definition
+
+Mark any field translatable with `->translatable()`:
+
+```php
+public function fields(): array
+{
+    return [
+        Field::text('title')->translatable()->label('Page Title'),
+        Field::textarea('body')->translatable()->label('Body'),
+        Field::text('cta')->label('CTA Button'),    // NOT translatable
+    ];
+}
+```
+
+### Stored format
+
+```json
+{
+  "title": { "en": "Welcome", "ar": "أهلاً" },
+  "body":  { "en": "Hello world", "ar": "مرحبا بالعالم" },
+  "cta":   "Get started"
+}
+```
+
+### Blade usage
+
+```php
+// Current app locale (e.g. 'en'):
+ui()->section('hero')->field('title')          // → "Welcome"
+
+// Explicit locale:
+ui()->section('hero')->field('title:ar')       // → "أهلاً"
+
+// Switch app locale and call normally:
+app()->setLocale('ar');
+ui()->section('hero')->field('title')          // → "أهلاً"
+```
+
+### Fallback order
+
+1. Requested locale value (if set and non-empty)
+2. `default_locale` value
+3. First non-empty locale value in the stored object
+4. `''`
+
+---
+
+## Select field — key vs label
+
+```php
+Field::select('status')
+    ->options([
+        'draft'     => 'Draft',
+        'published' => 'Published',
+        'archived'  => 'Archived',
+    ])
+```
+
+### Blade usage
+
+```php
+$field = ui()->section('post')->field('status');
+
+echo $field->getString();   // → "published"  (the stored key)
+echo $field->label();       // → "Published"  (the human-readable label)
+```
+
+### Return label by default
+
+Use `->returnLabel()` on the field definition if you always want the label:
+
+```php
+Field::select('status')
+    ->options(['draft' => 'Draft', 'published' => 'Published'])
+    ->returnLabel()
+```
+
+```php
+echo ui()->section('post')->field('status')->getString();  // → "Published"
+echo ui()->section('post')->field('status')->label();      // → "Published"
+```
+
+---
+
 ## Adding a new Field type
 
 1. Create `src/Fields/ColorField.php`:
@@ -262,6 +360,10 @@ $this->app->extend(UiManager::class, function (UiManager $manager) {
 'media' => [
     'disk' => 'public',
 ],
+
+// Multi-language support
+'locales'        => ['en'],          // all locales the dashboard shows inputs for
+'default_locale' => 'en',           // fallback when requested locale is missing
 ```
 
 ---

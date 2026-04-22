@@ -38,6 +38,7 @@ import { ref, reactive, onMounted, provide } from 'vue'
 import { SaveIcon, LoaderIcon, CheckIcon } from 'lucide-vue-next'
 import { useUiStore } from '../stores/ui.js'
 import { api } from '../composables/useApi.js'
+import { useLocales } from '../composables/useConfig.js'
 import FieldRenderer from './fields/FieldRenderer.vue'
 
 const props = defineProps({
@@ -49,21 +50,45 @@ const props = defineProps({
 provide('sectionName', props.section)
 
 const store = useUiStore()
+const { locales, defaultLocale } = useLocales()
 const form = reactive({})
 const saving = ref(false)
 const saved = ref(false)
 const saveError = ref(null)
+
+/**
+ * Initialize a single field's form value.
+ * For translatable fields, ensure the value is a locale-keyed object
+ * with all configured locales present.
+ */
+function initFieldValue(fieldDef, storedValue) {
+  if (!fieldDef.translatable) {
+    return storedValue ?? fieldDef.default ?? null
+  }
+
+  // Stored value is already a locale object → merge with empty keys for new locales.
+  if (storedValue && typeof storedValue === 'object' && !Array.isArray(storedValue)) {
+    const obj = {}
+    locales.forEach(l => { obj[l] = storedValue[l] ?? '' })
+    return obj
+  }
+
+  // Legacy string stored → treat as default locale value.
+  const obj = {}
+  locales.forEach(l => { obj[l] = l === defaultLocale ? (storedValue ?? fieldDef.default ?? '') : '' })
+  return obj
+}
 
 async function loadSection() {
   try {
     const data = await store.fetchSection(props.page, props.section)
     const fields = data.fields || {}
     props.definition.fields.forEach(f => {
-      form[f.name] = fields[f.name] ?? f.default ?? null
+      form[f.name] = initFieldValue(f, fields[f.name])
     })
   } catch {
     props.definition.fields.forEach(f => {
-      form[f.name] = f.default ?? null
+      form[f.name] = initFieldValue(f, undefined)
     })
   }
 }

@@ -8,23 +8,31 @@ use AhmedAliraqi\UiManager\Fields\BaseField;
 use AhmedAliraqi\UiManager\Fields\FileField;
 use AhmedAliraqi\UiManager\Fields\ImageField;
 use AhmedAliraqi\UiManager\Fields\PriceField;
-use AhmedAliraqi\UiManager\Fields\SvgField;
+use AhmedAliraqi\UiManager\Fields\SelectField;
 
 final readonly class FieldValueData
 {
     /**
-     * @param bool $parseVariables  Set to false for repeatable section items,
-     *                              where %placeholder% expansion is intentionally disabled.
+     * @param bool        $parseVariables  Set to false for repeatable section items,
+     *                                     where %placeholder% expansion is intentionally disabled.
+     * @param string|null $locale          Explicit locale for translatable fields.
+     *                                     Null means use app()->getLocale().
      */
     public function __construct(
         public readonly string $name,
         public readonly mixed $rawValue,
         public readonly BaseField $definition,
         public readonly bool $parseVariables = true,
+        public readonly ?string $locale = null,
     ) {}
 
     public function getValue(): mixed
     {
+        // Translatable fields: resolve locale before any further processing.
+        if ($this->definition->isTranslatable()) {
+            return $this->resolveLocaleValue();
+        }
+
         if ($this->parseVariables && is_string($this->rawValue)) {
             return app(\AhmedAliraqi\UiManager\Services\VariableParser::class)
                 ->parse($this->rawValue);
@@ -35,6 +43,11 @@ final readonly class FieldValueData
 
     public function getString(): string
     {
+        // Select fields with returnLabel: return the option label instead of the key.
+        if ($this->definition instanceof SelectField && $this->definition->isReturnLabel()) {
+            return $this->label();
+        }
+
         $value = $this->getValue();
 
         // Arrays (e.g. media field objects) have no meaningful string representation.
@@ -43,6 +56,44 @@ final readonly class FieldValueData
         }
 
         return is_string($value) ? $value : (string) ($value ?? '');
+    }
+
+    /**
+     * Resolve the locale-appropriate string for a translatable field.
+     * Falls back: requested locale → default_locale → first available value.
+     */
+    private function resolveLocaleValue(): string
+    {
+        // Legacy or non-locale string stored — return as-is with variable parsing.
+        if (is_string($this->rawValue)) {
+            if ($this->parseVariables) {
+                return app(\AhmedAliraqi\UiManager\Services\VariableParser::class)
+                    ->parse($this->rawValue);
+            }
+
+            return $this->rawValue;
+        }
+
+        if (! is_array($this->rawValue)) {
+            return '';
+        }
+
+        $locale        = $this->locale ?? app()->getLocale();
+        $defaultLocale = config('ui-manager.default_locale', 'en');
+
+        $rawCopy = $this->rawValue;
+        $value   = $rawCopy[$locale]
+                ?? $rawCopy[$defaultLocale]
+                ?? (count($rawCopy) > 0 ? reset($rawCopy) : '');
+
+        $value = is_string($value) ? $value : '';
+
+        if ($this->parseVariables && $value !== '') {
+            return app(\AhmedAliraqi\UiManager\Services\VariableParser::class)
+                ->parse($value);
+        }
+
+        return $value;
     }
 
     /**
@@ -68,21 +119,6 @@ final readonly class FieldValueData
         }
 
         return is_string($value) ? $value : '';
-    }
-
-    /**
-     * Return the raw SVG markup for SVG icon fields.
-     *
-     * The stored value IS the SVG content string (not a filename).
-     * Returns an empty string when no value is set or the field is not an SvgField.
-     */
-    public function toSvg(): string
-    {
-        if (! ($this->definition instanceof SvgField)) {
-            return '';
-        }
-
-        return is_string($this->rawValue) ? trim($this->rawValue) : '';
     }
 
     /**
@@ -120,6 +156,21 @@ final readonly class FieldValueData
         }
 
         return $this->definition->getCurrency();
+    }
+
+    /**
+     * Return the option label for a select field.
+     * Returns the stored key when no matching label is found, or '' for non-select fields.
+     */
+    public function label(): string
+    {
+        if (! ($this->definition instanceof SelectField)) {
+            return '';
+        }
+
+        $key = is_string($this->rawValue) ? $this->rawValue : '';
+
+        return (string) ($this->definition->getFieldOptions()[$key] ?? $key);
     }
 
     public function isMedia(): bool

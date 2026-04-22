@@ -14,7 +14,6 @@ use AhmedAliraqi\UiManager\Fields\FileField;
 use AhmedAliraqi\UiManager\Fields\ImageField;
 use AhmedAliraqi\UiManager\Fields\PriceField;
 use AhmedAliraqi\UiManager\Fields\SelectField;
-use AhmedAliraqi\UiManager\Fields\SvgField;
 use AhmedAliraqi\UiManager\Fields\TextField;
 use AhmedAliraqi\UiManager\Fields\TimeField;
 use AhmedAliraqi\UiManager\Fields\UrlField;
@@ -166,21 +165,6 @@ final class FieldBuilderTest extends TestCase
         $field = Field::color('overlay')->alpha();
 
         $this->assertTrue($field->toArray()['alpha']);
-    }
-
-    public function test_svg_field(): void
-    {
-        $field = Field::svg('icon');
-
-        $this->assertInstanceOf(SvgField::class, $field);
-        $this->assertSame('svg', $field->getType());
-    }
-
-    public function test_svg_field_custom_icons_path(): void
-    {
-        $field = Field::svg('icon')->iconsPath('/custom/icons');
-
-        $this->assertSame('/custom/icons', $field->getResolvedIconsPath());
     }
 
     public function test_date_field(): void

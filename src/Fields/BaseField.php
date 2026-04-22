@@ -20,6 +20,8 @@ abstract class BaseField
     /** @var array<string, mixed> */
     protected array $props = [];
 
+    protected bool $translatable = false;
+
     final public function __construct(string $name)
     {
         $this->name = $name;
@@ -84,6 +86,22 @@ abstract class BaseField
         return $this;
     }
 
+    /**
+     * Mark this field as translatable.
+     * The stored value becomes { "en": "...", "ar": "..." } keyed by locale.
+     */
+    public function translatable(): static
+    {
+        $this->translatable = true;
+
+        return $this;
+    }
+
+    public function isTranslatable(): bool
+    {
+        return $this->translatable;
+    }
+
     public function getName(): string
     {
         return $this->name;
@@ -137,7 +155,7 @@ abstract class BaseField
      */
     public function toArray(): array
     {
-        return array_filter([
+        $base = array_filter([
             'name'      => $this->name,
             'type'      => $this->getType(),
             'label'     => $this->getLabel(),
@@ -146,5 +164,11 @@ abstract class BaseField
             'default'   => $this->default,
             'props'     => $this->props,
         ], fn ($v) => $v !== null && $v !== '' && $v !== []);
+
+        if ($this->translatable) {
+            $base['translatable'] = true;
+        }
+
+        return $base;
     }
 }
