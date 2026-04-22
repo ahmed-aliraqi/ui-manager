@@ -34,9 +34,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, provide } from 'vue'
 import { SaveIcon, LoaderIcon, CheckIcon } from 'lucide-vue-next'
 import { useUiStore } from '../stores/ui.js'
+import { api } from '../composables/useApi.js'
 import FieldRenderer from './fields/FieldRenderer.vue'
 
 const props = defineProps({
@@ -44,6 +45,8 @@ const props = defineProps({
   section: String,
   definition: Object,
 })
+
+provide('sectionName', props.section)
 
 const store = useUiStore()
 const form = reactive({})
@@ -58,12 +61,32 @@ async function loadSection() {
     props.definition.fields.forEach(f => {
       form[f.name] = fields[f.name] ?? f.default ?? null
     })
-  } catch (e) {
-    // fallback to defaults
+  } catch {
     props.definition.fields.forEach(f => {
       form[f.name] = f.default ?? null
     })
   }
+}
+
+/**
+ * Upload any image/file fields that are still in "pending" state (file selected
+ * but not yet uploaded).  Uploads happen here — at save time — so no files are
+ * wasted if the user discards the form.
+ */
+async function resolvePendingUploads(formData) {
+  const resolved = { ...formData }
+  for (const [key, value] of Object.entries(resolved)) {
+    if (value && typeof value === 'object' && value._pending && value.file instanceof File) {
+      const fd = new FormData()
+      fd.append('file', value.file)
+      if (value.existingMediaId) fd.append('existing_media_id', String(value.existingMediaId))
+      const { data } = await api.post('/media', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      resolved[key] = { id: data.data.id, url: data.data.url, filename: data.data.filename }
+    }
+  }
+  return resolved
 }
 
 async function handleSave() {
@@ -71,7 +94,10 @@ async function handleSave() {
   saved.value = false
   saveError.value = null
   try {
-    await store.saveSectionFields(props.page, props.section, { ...form })
+    const fields = await resolvePendingUploads({ ...form })
+    await store.saveSectionFields(props.page, props.section, fields)
+    // Sync form state with resolved values (replaces pending objects with uploaded URLs)
+    Object.assign(form, fields)
     saved.value = true
     setTimeout(() => { saved.value = false }, 2500)
   } catch (e) {

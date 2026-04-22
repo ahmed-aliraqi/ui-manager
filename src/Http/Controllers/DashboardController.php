@@ -13,11 +13,47 @@ final class DashboardController extends Controller
     {
         return view('ui-manager::dashboard', [
             'config' => [
-                'title'       => config('ui-manager.dashboard.title', 'UI Manager'),
-                'homeButton'  => config('ui-manager.dashboard.home_button'),
-                'apiBase'     => url(config('ui-manager.routes.api_prefix', 'ui-manager/api')),
-                'assetsUrl'   => rtrim(config('ui-manager.assets_url', asset('vendor/ui-manager')), '/'),
+                'title'      => config('ui-manager.dashboard.title', 'UI Manager'),
+                'homeButton' => config('ui-manager.dashboard.home_button'),
+                'apiBase'    => url(config('ui-manager.routes.api_prefix', 'ui-manager/api')),
             ],
+            'assets' => $this->resolveAssets(),
         ]);
+    }
+
+    /**
+     * Read the pre-built Vite manifest and return resolved CSS + JS URLs.
+     *
+     * The manifest lives at public/vendor/ui-manager/manifest.json after
+     * `php artisan vendor:publish --tag=ui-manager-assets`.
+     *
+     * @return array{css: string[], js: string[]}
+     */
+    private function resolveAssets(): array
+    {
+        $manifestPath = public_path('vendor/ui-manager/manifest.json');
+
+        if (! file_exists($manifestPath)) {
+            return ['css' => [], 'js' => []];
+        }
+
+        $manifest = json_decode(file_get_contents($manifestPath), true) ?? [];
+
+        // The entry point key matches the `input` defined in vite.config.js
+        $entry = $manifest['resources/js/ui-manager/app.js'] ?? null;
+
+        if ($entry === null) {
+            return ['css' => [], 'js' => []];
+        }
+
+        $base = rtrim(asset('vendor/ui-manager'), '/');
+
+        return [
+            'js'  => [$base . '/' . ltrim($entry['file'], '/')],
+            'css' => array_map(
+                fn (string $path) => $base . '/' . ltrim($path, '/'),
+                $entry['css'] ?? []
+            ),
+        ];
     }
 }

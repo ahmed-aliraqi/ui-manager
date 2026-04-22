@@ -40,18 +40,13 @@ Publish the config (optional):
 php artisan vendor:publish --tag=ui-manager-config
 ```
 
-Build the dashboard assets:
-
-```bash
-npm install
-npm run build
-```
-
-Publish compiled assets to `public/vendor/ui-manager`:
+Publish the pre-built dashboard assets to `public/vendor/ui-manager`:
 
 ```bash
 php artisan vendor:publish --tag=ui-manager-assets
 ```
+
+> The dashboard frontend is pre-compiled and ships inside the package — no `npm install` or build step is required in your application.
 
 ---
 

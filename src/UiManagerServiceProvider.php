@@ -104,8 +104,11 @@ class UiManagerServiceProvider extends ServiceProvider
             __DIR__ . '/../resources/views' => resource_path('views/vendor/ui-manager'),
         ], 'ui-manager-views');
 
+        // Publish the pre-built dist/ directory to public/vendor/ui-manager/.
+        // dist/ is the direct Vite output, so manifest.json ends up at
+        // public/vendor/ui-manager/manifest.json — exactly where the controller reads it.
         $this->publishes([
-            __DIR__ . '/../public' => public_path('vendor/ui-manager'),
+            __DIR__ . '/../dist' => public_path('vendor/ui-manager'),
         ], 'ui-manager-assets');
     }
 

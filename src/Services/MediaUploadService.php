@@ -4,40 +4,42 @@ declare(strict_types=1);
 
 namespace AhmedAliraqi\UiManager\Services;
 
-use AhmedAliraqi\UiManager\Models\UiMedia;
+use AhmedAliraqi\UiManager\Models\UiMediaFile;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 final class MediaUploadService
 {
-    public function upload(UploadedFile $file, string $collection = 'default'): UiMedia
+    /**
+     * Upload a file via Spatie Media Library.
+     *
+     * When $existingMediaId is supplied the upload replaces the file on the
+     * same UiMediaFile owner — singleFile() automatically deletes the old one.
+     */
+    public function upload(UploadedFile $file, ?int $existingMediaId = null): Media
     {
-        $disk      = config('ui-manager.media.disk', 'public');
-        $extension = $file->getClientOriginalExtension();
-        $filename  = Str::uuid() . '.' . $extension;
-        $path      = "ui-manager/{$collection}/{$filename}";
+        $collection = str_starts_with($file->getMimeType() ?? '', 'image/') ? 'images' : 'files';
 
-        Storage::disk($disk)->putFileAs(
-            "ui-manager/{$collection}",
-            $file,
-            $filename
-        );
+        if ($existingMediaId !== null) {
+            $existing = Media::find($existingMediaId);
+            if ($existing && $existing->model instanceof UiMediaFile) {
+                return $existing->model
+                    ->addMedia($file)
+                    ->usingFileName($file->getClientOriginalName())
+                    ->toMediaCollection($collection);
+            }
+        }
 
-        return UiMedia::create([
-            'collection' => $collection,
-            'disk'       => $disk,
-            'path'       => $path,
-            'filename'   => $file->getClientOriginalName(),
-            'mime_type'  => $file->getMimeType(),
-            'size'       => $file->getSize(),
-        ]);
+        $owner = UiMediaFile::create();
+
+        return $owner
+            ->addMedia($file)
+            ->usingFileName($file->getClientOriginalName())
+            ->toMediaCollection($collection);
     }
 
-    public function delete(int $id): void
+    public function delete(int $mediaId): void
     {
-        $media = UiMedia::findOrFail($id);
-        Storage::disk($media->disk)->delete($media->path);
-        $media->delete();
+        Media::find($mediaId)?->delete();
     }
 }

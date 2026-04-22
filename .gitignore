@@ -1,0 +1,28 @@
+# PHP dependencies
+/vendor/
+
+# Node development dependencies — never committed
+/node_modules/
+
+# Old build output location (replaced by dist/)
+/public/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Test coverage
+/coverage/
+.phpunit.cache/
+.phpunit.result.cache
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# NOTE: dist/ IS committed — it contains the pre-built dashboard assets
+# that ship with the package and are published to public/vendor/ui-manager/.
+# Contributors must run `npm run build` before committing frontend changes.

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace AhmedAliraqi\UiManager\Http\Controllers\Api;
 
-use AhmedAliraqi\UiManager\Models\UiMedia;
 use AhmedAliraqi\UiManager\Services\MediaUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,25 +17,30 @@ final class MediaController extends Controller
 
     /**
      * POST /api/media
-     * Upload a file and return URL + metadata.
+     *
+     * Accepts:
+     *  - file             : UploadedFile (required)
+     *  - existing_media_id: integer (optional) — when provided the new file
+     *                        replaces the old one on the same owner model;
+     *                        singleFile() automatically deletes the old file.
      */
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'file'       => 'required|file|max:51200',
-            'collection' => 'nullable|string|max:64',
+            'file'               => 'required|file|max:51200',
+            'existing_media_id'  => 'nullable|integer',
         ]);
 
         $media = $this->uploadService->upload(
             $request->file('file'),
-            $request->input('collection', 'default')
+            $request->filled('existing_media_id') ? (int) $request->input('existing_media_id') : null,
         );
 
         return response()->json([
             'data' => [
                 'id'       => $media->id,
                 'url'      => $media->getUrl(),
-                'filename' => $media->filename,
+                'filename' => $media->file_name,
                 'mime'     => $media->mime_type,
                 'size'     => $media->size,
             ],

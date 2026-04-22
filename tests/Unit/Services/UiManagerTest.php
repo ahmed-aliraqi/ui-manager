@@ -26,56 +26,43 @@ final class UiManagerTest extends TestCase
     {
         parent::setUp();
 
-        $this->pages   = $this->app->make(PageRegistry::class);
+        $this->pages    = $this->app->make(PageRegistry::class);
         $this->sections = $this->app->make(SectionRegistry::class);
-        $this->manager = $this->app->make(UiManager::class);
+        $this->manager  = $this->app->make(UiManager::class);
     }
 
     public function test_section_returns_section_view_for_non_repeatable(): void
     {
-        $page    = $this->makeTestPage();
-        $section = $this->makeTestSection($page);
-
+        [$page, $section] = $this->makePageAndSection();
         $this->pages->register($page);
         $this->sections->register($section);
 
-        $view = $this->manager->section('test-section');
-
-        $this->assertInstanceOf(SectionView::class, $view);
+        $this->assertInstanceOf(SectionView::class, $this->manager->section('test-section'));
     }
 
     public function test_section_returns_repeatable_view_for_repeatable(): void
     {
-        $page    = $this->makeTestPage();
-        $section = $this->makeRepeatableTestSection($page);
-
+        [$page, $section] = $this->makePageAndRepeatableSection();
         $this->pages->register($page);
         $this->sections->register($section);
 
-        $view = $this->manager->section('test-repeatable');
-
-        $this->assertInstanceOf(RepeatableSectionView::class, $view);
+        $this->assertInstanceOf(RepeatableSectionView::class, $this->manager->section('test-repeatable'));
     }
 
     public function test_section_falls_back_to_defaults(): void
     {
-        $page    = $this->makeTestPage();
-        $section = $this->makeTestSection($page);
-
+        [$page, $section] = $this->makePageAndSection();
         $this->pages->register($page);
         $this->sections->register($section);
 
-        $view  = $this->manager->section('test-section');
-        $value = $view->field('title')->getString();
+        $value = $this->manager->section('test-section')->field('title')->getString();
 
         $this->assertSame('Default Title', $value);
     }
 
     public function test_section_uses_db_value_over_default(): void
     {
-        $page    = $this->makeTestPage();
-        $section = $this->makeTestSection($page);
-
+        [$page, $section] = $this->makePageAndSection();
         $this->pages->register($page);
         $this->sections->register($section);
 
@@ -86,38 +73,49 @@ final class UiManagerTest extends TestCase
             'fields'  => ['title' => 'DB Value'],
         ]);
 
-        $view  = $this->manager->section('test-section');
-        $value = $view->field('title')->getString();
+        $value = $this->manager->section('test-section')->field('title')->getString();
 
         $this->assertSame('DB Value', $value);
     }
 
-    public function test_repeatable_section_is_iterable(): void
+    public function test_db_value_is_returned_after_save_when_caching_enabled(): void
     {
-        $page    = $this->makeTestPage();
-        $section = $this->makeRepeatableTestSection($page);
+        // Re-enable caching for this test to verify the cache-key fix
+        config(['ui-manager.cache.enabled' => true]);
 
+        [$page, $section] = $this->makePageAndSection();
         $this->pages->register($page);
         $this->sections->register($section);
 
+        // First read — caches empty data, defaults are shown
+        $before = $this->manager->section('test-section')->field('title')->getString();
+        $this->assertSame('Default Title', $before);
+
+        // Simulate a save: write to DB and flush cache by page NAME (as the controller does)
         UiContent::create([
-            'layout'     => 'default',
-            'page'       => 'test-page',
-            'section'    => 'test-repeatable',
-            'fields'     => ['label' => 'Item One'],
-            'sort_order' => 0,
+            'layout'  => 'default',
+            'page'    => 'test-page',
+            'section' => 'test-section',
+            'fields'  => ['title' => 'Updated Title'],
         ]);
-        UiContent::create([
-            'layout'     => 'default',
-            'page'       => 'test-page',
-            'section'    => 'test-repeatable',
-            'fields'     => ['label' => 'Item Two'],
-            'sort_order' => 1,
-        ]);
+        $this->manager->flushCache('test-page', 'test-section');
+
+        // After flush the DB value must be returned — not the stale cached default
+        $after = $this->manager->section('test-section')->field('title')->getString();
+        $this->assertSame('Updated Title', $after);
+    }
+
+    public function test_repeatable_section_is_iterable(): void
+    {
+        [$page, $section] = $this->makePageAndRepeatableSection();
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        UiContent::create(['layout' => 'default', 'page' => 'test-page', 'section' => 'test-repeatable', 'fields' => ['label' => 'Item One'], 'sort_order' => 0]);
+        UiContent::create(['layout' => 'default', 'page' => 'test-page', 'section' => 'test-repeatable', 'fields' => ['label' => 'Item Two'], 'sort_order' => 1]);
 
         $view = $this->manager->section('test-repeatable');
 
-        $this->assertInstanceOf(RepeatableSectionView::class, $view);
         $this->assertCount(2, $view);
 
         $labels = [];
@@ -128,68 +126,85 @@ final class UiManagerTest extends TestCase
         $this->assertSame(['Item One', 'Item Two'], $labels);
     }
 
+    public function test_repeatable_section_falls_back_to_section_defaults(): void
+    {
+        $page = new class extends Page {
+            protected string $name = 'test-page';
+        };
+
+        $section = new class($page::class) extends Section implements Repeatable {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name    = 'test-repeatable';
+            protected string $layout  = 'default';
+            protected string $page    = '';
+
+            public function fields(): array { return [Field::text('label')]; }
+
+            public function default(): array
+            {
+                return [
+                    ['label' => 'Default A'],
+                    ['label' => 'Default B'],
+                ];
+            }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        $view   = $this->manager->section('test-repeatable');
+        $labels = array_map(fn ($item) => $item->field('label')->getString(), iterator_to_array($view));
+
+        $this->assertSame(['Default A', 'Default B'], $labels);
+    }
+
     public function test_section_or_null_returns_null_for_unknown(): void
     {
-        $view = $this->manager->sectionOrNull('does-not-exist');
-
-        $this->assertNull($view);
+        $this->assertNull($this->manager->sectionOrNull('does-not-exist'));
     }
 
     public function test_flush_cache_does_not_throw(): void
     {
         $this->manager->flushCache('test-page', 'test-section');
-        $this->assertTrue(true); // no exception thrown
+        $this->assertTrue(true);
     }
 
     // ------------------------------------------------------------------
 
-    private function makeTestPage(): Page
+    private function makePageAndSection(): array
     {
-        return new class extends Page {
+        $page = new class extends Page {
             protected string $name = 'test-page';
         };
+
+        $section = new class($page::class) extends Section {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'test-section';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array { return [Field::text('title')]; }
+            public function default(): array { return ['title' => 'Default Title']; }
+        };
+
+        return [$page, $section];
     }
 
-    private function makeTestSection(Page $page): Section
+    private function makePageAndRepeatableSection(): array
     {
-        return new class($page::class) extends Section {
-            public function __construct(string $pageClass)
-            {
-                $this->page = $pageClass;
-            }
-
-            protected string $name = 'test-section';
-            protected string $layout = 'default';
-            protected string $page = '';
-
-            public function fields(): array
-            {
-                return [Field::text('title')];
-            }
-
-            public function default(): array
-            {
-                return ['title' => 'Default Title'];
-            }
+        $page = new class extends Page {
+            protected string $name = 'test-page';
         };
-    }
 
-    private function makeRepeatableTestSection(Page $page): Section
-    {
-        return new class($page::class) extends Section implements Repeatable {
-            public function __construct(string $pageClass)
-            {
-                $this->page = $pageClass;
-            }
-
-            protected string $name = 'test-repeatable';
+        $section = new class($page::class) extends Section implements Repeatable {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'test-repeatable';
             protected string $layout = 'default';
-            protected string $page = '';
+            protected string $page   = '';
 
-            public function fields(): array
-            {
-                return [Field::text('label')];
-            }
+            public function fields(): array { return [Field::text('label')]; }
         };
+
+        return [$page, $section];
     }
 }

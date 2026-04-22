@@ -1,10 +1,7 @@
 <template>
   <div class="space-y-2">
     <!-- Preview -->
-    <div
-      v-if="previewUrl"
-      class="relative inline-block"
-    >
+    <div v-if="previewUrl" class="relative inline-block">
       <img
         :src="previewUrl"
         class="h-32 w-auto rounded-md border object-cover"
@@ -17,6 +14,10 @@
       >
         <XIcon class="w-3 h-3" />
       </button>
+      <span
+        v-if="modelValue?._pending"
+        class="absolute bottom-1 left-1 text-[10px] bg-amber-500 text-white rounded px-1"
+      >pending</span>
     </div>
 
     <!-- Upload zone -->
@@ -48,62 +49,73 @@
       @change="onFileChange"
     />
 
-    <p v-if="uploading" class="text-xs text-muted-foreground flex items-center gap-1">
-      <LoaderIcon class="w-3 h-3 animate-spin" /> Uploading…
-    </p>
     <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { UploadIcon, XIcon, LoaderIcon } from 'lucide-vue-next'
-import { api } from '../../composables/useApi.js'
+import { ref, computed, onUnmounted } from 'vue'
+import { UploadIcon, XIcon } from 'lucide-vue-next'
 
 const props = defineProps({ id: String, field: Object, modelValue: { default: null } })
 const emit = defineEmits(['update:modelValue'])
 
 const fileInput = ref(null)
-const uploading = ref(false)
 const dragging = ref(false)
 const error = ref(null)
 
+// Keep track of locally-created blob URLs so we can revoke them on cleanup
+const blobUrls = new Set()
+
 const previewUrl = computed(() => {
   if (!props.modelValue) return null
+  // Locally-selected file not yet uploaded
+  if (props.modelValue?._pending) return props.modelValue.localUrl
   if (typeof props.modelValue === 'string') return props.modelValue
   return props.modelValue?.url || null
+})
+
+onUnmounted(() => {
+  blobUrls.forEach(url => URL.revokeObjectURL(url))
 })
 
 function onDrop(e) {
   dragging.value = false
   const file = e.dataTransfer.files[0]
-  if (file) uploadFile(file)
+  if (file) setPendingFile(file)
 }
 
 function onFileChange(e) {
   const file = e.target.files[0]
-  if (file) uploadFile(file)
+  if (file) setPendingFile(file)
 }
 
-async function uploadFile(file) {
+function setPendingFile(file) {
   error.value = null
-  uploading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('collection', 'images')
-    const { data } = await api.post('/media', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    emit('update:modelValue', { url: data.data.url, id: data.data.id, filename: data.data.filename })
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    uploading.value = false
+
+  // Revoke the previous local blob URL to avoid memory leaks
+  if (props.modelValue?._pending && props.modelValue.localUrl) {
+    URL.revokeObjectURL(props.modelValue.localUrl)
+    blobUrls.delete(props.modelValue.localUrl)
   }
+
+  const localUrl = URL.createObjectURL(file)
+  blobUrls.add(localUrl)
+
+  emit('update:modelValue', {
+    _pending: true,
+    file,
+    localUrl,
+    // Preserve the current media ID so the server can replace-in-place via singleFile()
+    existingMediaId: props.modelValue?.id ?? null,
+  })
 }
 
 function clear() {
+  if (props.modelValue?._pending && props.modelValue.localUrl) {
+    URL.revokeObjectURL(props.modelValue.localUrl)
+    blobUrls.delete(props.modelValue.localUrl)
+  }
   emit('update:modelValue', null)
   if (fileInput.value) fileInput.value.value = ''
 }

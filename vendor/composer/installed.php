@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'ahmed-aliraqi/ui-manager',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => 'b35e0615f30956d171b7661ecc62916adb9ee6cc',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         'ahmed-aliraqi/ui-manager' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => 'b35e0615f30956d171b7661ecc62916adb9ee6cc',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

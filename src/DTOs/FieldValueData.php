@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace AhmedAliraqi\UiManager\DTOs;
 
 use AhmedAliraqi\UiManager\Fields\BaseField;
-use AhmedAliraqi\UiManager\Fields\ImageField;
 use AhmedAliraqi\UiManager\Fields\FileField;
+use AhmedAliraqi\UiManager\Fields\ImageField;
 
 final readonly class FieldValueData
 {
@@ -16,9 +16,6 @@ final readonly class FieldValueData
         public readonly BaseField $definition,
     ) {}
 
-    /**
-     * Return the value after variable parsing.
-     */
     public function getValue(): mixed
     {
         if (is_string($this->rawValue)) {
@@ -36,12 +33,26 @@ final readonly class FieldValueData
         return is_string($value) ? $value : (string) ($value ?? '');
     }
 
+    /**
+     * Return the public URL for media fields.
+     *
+     * Checks the stored 'url' key first (fast path).  Falls back to a live
+     * Spatie Media Library lookup by 'id' so signed/S3 URLs stay fresh.
+     */
     public function getUrl(): string
     {
         $value = $this->rawValue;
 
-        if (is_array($value) && isset($value['url'])) {
-            return $value['url'];
+        if (is_array($value) && isset($value['url']) && $value['url'] !== '') {
+            return (string) $value['url'];
+        }
+
+        if (is_array($value) && isset($value['id'])) {
+            try {
+                $media = \Spatie\MediaLibrary\MediaCollections\Models\Media::find((int) $value['id']);
+
+                return $media?->getUrl() ?? '';
+            } catch (\Throwable) {}
         }
 
         return is_string($value) ? $value : '';

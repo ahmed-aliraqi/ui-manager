@@ -6,23 +6,31 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $config['title'] }}</title>
 
-    {{-- Preload fonts --}}
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet">
 
-    @vite(['resources/js/ui-manager/app.js'], 'vendor/ui-manager')
+    @foreach($assets['css'] as $url)
+        <link rel="stylesheet" href="{{ $url }}">
+    @endforeach
 
+    {{-- v-cloak hides the mount div until Vue finishes mounting.
+         It must live on the element Vue controls (#ui-manager-app),
+         NOT on <body> — Vue only removes it from its own root element. --}}
     <style>
-        [v-cloak] { display: none !important; }
+        #ui-manager-app[v-cloak] { display: none; }
     </style>
 </head>
-<body class="h-full bg-background text-foreground antialiased" v-cloak>
+<body class="h-full antialiased">
 
-    <div id="ui-manager-app"></div>
+    <div id="ui-manager-app" v-cloak></div>
 
     <script>
         window.__UI_MANAGER_CONFIG__ = @json($config);
     </script>
+
+    @foreach($assets['js'] as $url)
+        <script type="module" src="{{ $url }}"></script>
+    @endforeach
 
 </body>
 </html>

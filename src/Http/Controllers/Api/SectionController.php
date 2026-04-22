@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace AhmedAliraqi\UiManager\Http\Controllers\Api;
 
+use AhmedAliraqi\UiManager\Fields\FileField;
+use AhmedAliraqi\UiManager\Fields\ImageField;
 use AhmedAliraqi\UiManager\Http\Requests\SaveSectionRequest;
 use AhmedAliraqi\UiManager\Models\UiContent;
+use AhmedAliraqi\UiManager\Services\MediaUploadService;
 use AhmedAliraqi\UiManager\Services\SectionRegistry;
 use AhmedAliraqi\UiManager\Services\UiManager;
 use Illuminate\Http\JsonResponse;
@@ -17,36 +20,44 @@ final class SectionController extends Controller
     public function __construct(
         private readonly SectionRegistry $sectionRegistry,
         private readonly UiManager $uiManager,
+        private readonly MediaUploadService $mediaService,
     ) {}
 
     /**
      * GET /api/pages/{page}/sections/{section}
-     * Returns current stored field values for a section.
      */
     public function show(string $page, string $sectionName): JsonResponse
     {
         $definition = $this->resolveSection($page, $sectionName);
 
         if ($definition->isRepeatable()) {
-            $items = UiContent::findRepeatableItems($page, $sectionName)
+            $dbItems = UiContent::findRepeatableItems($page, $sectionName)
                 ->map(fn (UiContent $c) => [
                     'id'         => $c->id,
                     'sort_order' => $c->sort_order,
                     'fields'     => $c->fields ?? [],
                 ])->all();
 
+            if ($dbItems === []) {
+                $dbItems = array_values(array_map(
+                    fn (array $fields, int $idx) => ['id' => null, 'sort_order' => $idx, 'fields' => $fields],
+                    $definition->default(),
+                    array_keys($definition->default()),
+                ));
+            }
+
             return response()->json([
                 'data' => [
                     'section'    => $definition->toArray(),
-                    'items'      => array_values($items),
+                    'items'      => array_values($dbItems),
                     'repeatable' => true,
                 ],
             ]);
         }
 
-        $record  = UiContent::findSection($page, $sectionName);
-        $stored  = $record?->fields ?? [];
-        $merged  = array_merge($definition->resolveDefaults(), $stored);
+        $record = UiContent::findSection($page, $sectionName);
+        $stored = $record?->fields ?? [];
+        $merged = array_merge($definition->resolveDefaults(), $stored);
 
         return response()->json([
             'data' => [
@@ -59,7 +70,6 @@ final class SectionController extends Controller
 
     /**
      * PUT /api/pages/{page}/sections/{section}
-     * Save/update a non-repeatable section.
      */
     public function update(SaveSectionRequest $request, string $page, string $sectionName): JsonResponse
     {
@@ -69,14 +79,15 @@ final class SectionController extends Controller
             return response()->json(['message' => 'Use the items endpoints for repeatable sections.'], 422);
         }
 
-        $fields = $this->validateFields($request->input('fields', []), $definition);
+        $newFields = $this->normalizeFields($request->input('fields', []), $definition);
+
+        // Clean up media whose IDs changed or were cleared
+        $existing = UiContent::findSection($page, $sectionName);
+        $this->cleanupReplacedMedia($existing?->fields ?? [], $newFields, $definition);
 
         $record = UiContent::updateOrCreate(
             ['page' => $page, 'section' => $sectionName, 'sort_order' => null],
-            [
-                'layout' => $definition->getLayout(),
-                'fields' => $fields,
-            ]
+            ['layout' => $definition->getLayout(), 'fields' => $newFields],
         );
 
         $this->uiManager->flushCache($page, $sectionName);
@@ -88,7 +99,6 @@ final class SectionController extends Controller
 
     /**
      * POST /api/pages/{page}/sections/{section}/items
-     * Add a new item to a repeatable section.
      */
     public function storeItem(SaveSectionRequest $request, string $page, string $sectionName): JsonResponse
     {
@@ -98,7 +108,7 @@ final class SectionController extends Controller
             return response()->json(['message' => 'Section is not repeatable.'], 422);
         }
 
-        $fields = $this->validateFields($request->input('fields', []), $definition);
+        $fields = $this->normalizeFields($request->input('fields', []), $definition);
 
         $maxOrder = UiContent::forSection($page, $sectionName)
             ->whereNotNull('sort_order')
@@ -114,7 +124,9 @@ final class SectionController extends Controller
 
         $this->uiManager->flushCache($page, $sectionName);
 
-        return response()->json(['data' => ['id' => $item->id, 'fields' => $item->fields, 'sort_order' => $item->sort_order]], 201);
+        return response()->json([
+            'data' => ['id' => $item->id, 'fields' => $item->fields, 'sort_order' => $item->sort_order],
+        ], 201);
     }
 
     /**
@@ -128,8 +140,11 @@ final class SectionController extends Controller
             ->where('section', $sectionName)
             ->firstOrFail();
 
-        $fields      = $this->validateFields($request->input('fields', []), $definition);
-        $item->fields = $fields;
+        $newFields = $this->normalizeFields($request->input('fields', []), $definition);
+
+        $this->cleanupReplacedMedia($item->fields ?? [], $newFields, $definition);
+
+        $item->fields = $newFields;
         $item->save();
 
         $this->uiManager->flushCache($page, $sectionName);
@@ -142,12 +157,17 @@ final class SectionController extends Controller
      */
     public function destroyItem(string $page, string $sectionName, int $itemId): JsonResponse
     {
-        UiContent::where('id', $itemId)
+        $item = UiContent::where('id', $itemId)
             ->where('page', $page)
             ->where('section', $sectionName)
             ->whereNotNull('sort_order')
-            ->firstOrFail()
-            ->delete();
+            ->firstOrFail();
+
+        // Delete media owned by this item
+        $definition = $this->resolveSection($page, $sectionName);
+        $this->cleanupReplacedMedia($item->fields ?? [], [], $definition);
+
+        $item->delete();
 
         // Re-sequence remaining items
         UiContent::findRepeatableItems($page, $sectionName)
@@ -185,7 +205,6 @@ final class SectionController extends Controller
 
     private function resolveSection(string $page, string $sectionName): \AhmedAliraqi\UiManager\Core\Section
     {
-        // SectionRegistry::find() handles both FQCN and page-name slugs.
         $definition = $this->sectionRegistry->find($page, $sectionName);
 
         if ($definition === null) {
@@ -196,22 +215,51 @@ final class SectionController extends Controller
     }
 
     /**
-     * Filter/sanitize fields against what the section actually declares.
+     * Map submitted field input to all declared fields, using field defaults
+     * for any key not present in $input.  This ensures every field is always
+     * persisted — not just the ones the client happens to send.
      *
      * @param  array<string, mixed> $input
      * @return array<string, mixed>
      */
-    private function validateFields(array $input, \AhmedAliraqi\UiManager\Core\Section $section): array
+    private function normalizeFields(array $input, \AhmedAliraqi\UiManager\Core\Section $section): array
     {
-        $fieldsMap = $section->getFieldsMap();
-        $result    = [];
+        $result = [];
 
-        foreach ($fieldsMap as $name => $field) {
-            if (array_key_exists($name, $input)) {
-                $result[$name] = $input[$name];
-            }
+        foreach ($section->getFieldsMap() as $name => $field) {
+            $result[$name] = array_key_exists($name, $input)
+                ? $input[$name]
+                : $field->getDefault();
         }
 
         return $result;
+    }
+
+    /**
+     * Delete Spatie media records for image/file fields that were replaced or cleared.
+     *
+     * @param  array<string, mixed> $oldFields
+     * @param  array<string, mixed> $newFields  (empty array = deleting the whole item)
+     */
+    private function cleanupReplacedMedia(
+        array $oldFields,
+        array $newFields,
+        \AhmedAliraqi\UiManager\Core\Section $section,
+    ): void {
+        foreach ($section->getFieldsMap() as $name => $field) {
+            if (! ($field instanceof ImageField) && ! ($field instanceof FileField)) {
+                continue;
+            }
+
+            $oldValue = $oldFields[$name] ?? null;
+            $newValue = $newFields[$name] ?? null;
+
+            $oldId = is_array($oldValue) ? ($oldValue['id'] ?? null) : null;
+            $newId = is_array($newValue) ? ($newValue['id'] ?? null) : null;
+
+            if ($oldId !== null && $oldId !== $newId) {
+                $this->mediaService->delete((int) $oldId);
+            }
+        }
     }
 }
