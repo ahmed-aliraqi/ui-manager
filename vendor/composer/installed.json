@@ -6491,17 +6491,17 @@
         },
         {
             "name": "spatie/laravel-medialibrary",
-            "version": "11.21.0",
-            "version_normalized": "11.21.0.0",
+            "version": "11.21.1",
+            "version_normalized": "11.21.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/laravel-medialibrary.git",
-                "reference": "d6e2595033ffd130d4dd5d124510ab3304794c44"
+                "reference": "422b7ff3ed9cd263c70b400bc57dabdaaf472283"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spatie/laravel-medialibrary/zipball/d6e2595033ffd130d4dd5d124510ab3304794c44",
-                "reference": "d6e2595033ffd130d4dd5d124510ab3304794c44",
+                "url": "https://api.github.com/repos/spatie/laravel-medialibrary/zipball/422b7ff3ed9cd263c70b400bc57dabdaaf472283",
+                "reference": "422b7ff3ed9cd263c70b400bc57dabdaaf472283",
                 "shasum": ""
             },
             "require": {
@@ -6547,7 +6547,7 @@
                 "php-ffmpeg/php-ffmpeg": "Required for generating video thumbnails",
                 "spatie/pdf-to-image": "Required for generating thumbnails of PDFs and SVGs"
             },
-            "time": "2026-02-21T15:58:56+00:00",
+            "time": "2026-04-22T07:49:28+00:00",
             "type": "library",
             "extra": {
                 "laravel": {
@@ -6588,7 +6588,7 @@
             ],
             "support": {
                 "issues": "https://github.com/spatie/laravel-medialibrary/issues",
-                "source": "https://github.com/spatie/laravel-medialibrary/tree/11.21.0"
+                "source": "https://github.com/spatie/laravel-medialibrary/tree/11.21.1"
             },
             "funding": [
                 {

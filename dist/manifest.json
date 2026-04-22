@@ -1,10 +1,6 @@
 {
-  "_RepeatableSection-DSoD3Fx9.css": {
-    "file": "assets/RepeatableSection-DSoD3Fx9.css",
-    "src": "_RepeatableSection-DSoD3Fx9.css"
-  },
-  "_RepeatableSection-gSEqMvC8.js": {
-    "file": "chunks/RepeatableSection-gSEqMvC8.js",
+  "_RepeatableSection-BmcCRnJ1.js": {
+    "file": "chunks/RepeatableSection-BmcCRnJ1.js",
     "name": "RepeatableSection",
     "imports": [
       "resources/js/ui-manager/app.js"
@@ -13,8 +9,12 @@
       "assets/RepeatableSection-DSoD3Fx9.css"
     ]
   },
+  "_RepeatableSection-DSoD3Fx9.css": {
+    "file": "assets/RepeatableSection-DSoD3Fx9.css",
+    "src": "_RepeatableSection-DSoD3Fx9.css"
+  },
   "resources/js/ui-manager/app.js": {
-    "file": "app-CBvup62Y.js",
+    "file": "app-BN6b9Goq.js",
     "name": "app",
     "src": "resources/js/ui-manager/app.js",
     "isEntry": true,
@@ -24,21 +24,21 @@
       "resources/js/ui-manager/pages/SectionEdit.vue"
     ],
     "css": [
-      "assets/app-BCD5Toeh.css"
+      "assets/app-D63HcVXc.css"
     ]
   },
   "resources/js/ui-manager/pages/PageShow.vue": {
-    "file": "chunks/PageShow-Cbk0zLGy.js",
+    "file": "chunks/PageShow-BhacgOLJ.js",
     "name": "PageShow",
     "src": "resources/js/ui-manager/pages/PageShow.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/ui-manager/app.js",
-      "_RepeatableSection-gSEqMvC8.js"
+      "_RepeatableSection-BmcCRnJ1.js"
     ]
   },
   "resources/js/ui-manager/pages/PagesIndex.vue": {
-    "file": "chunks/PagesIndex-CO2K5fg0.js",
+    "file": "chunks/PagesIndex-DC4jelvC.js",
     "name": "PagesIndex",
     "src": "resources/js/ui-manager/pages/PagesIndex.vue",
     "isDynamicEntry": true,
@@ -47,13 +47,13 @@
     ]
   },
   "resources/js/ui-manager/pages/SectionEdit.vue": {
-    "file": "chunks/SectionEdit-BSxUH_ey.js",
+    "file": "chunks/SectionEdit-Ctrf1sY2.js",
     "name": "SectionEdit",
     "src": "resources/js/ui-manager/pages/SectionEdit.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/ui-manager/app.js",
-      "_RepeatableSection-gSEqMvC8.js"
+      "_RepeatableSection-BmcCRnJ1.js"
     ]
   }
 }
