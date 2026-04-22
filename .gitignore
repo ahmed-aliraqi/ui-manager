@@ -24,6 +24,8 @@ coverage/
 .env.*
 !.env.example
 
+composer.lock
+
 # NOTE: dist/ IS committed — it contains the pre-built dashboard assets
 # that ship with the package and are published to public/vendor/ui-manager/.
 # Contributors must run `npm run build` before committing frontend changes.
