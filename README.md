@@ -576,4 +576,4 @@ src/
 
 ## License
 
-MIT © Ahmed AlIraqi
+MIT © Ahmed Fathy
