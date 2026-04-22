@@ -1,12 +1,12 @@
 .idea
 # PHP dependencies
-/vendor/
+vendor/
 
 # Node development dependencies — never committed
-/node_modules/
+node_modules/
 
 # Old build output location (replaced by dist/)
-/public/
+public/
 
 # IDE / OS
 .idea/
@@ -15,7 +15,7 @@
 Thumbs.db
 
 # Test coverage
-/coverage/
+coverage/
 .phpunit.cache/
 .phpunit.result.cache
 
