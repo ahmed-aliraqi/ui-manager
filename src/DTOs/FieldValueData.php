@@ -7,6 +7,7 @@ namespace AhmedAliraqi\UiManager\DTOs;
 use AhmedAliraqi\UiManager\Fields\BaseField;
 use AhmedAliraqi\UiManager\Fields\FileField;
 use AhmedAliraqi\UiManager\Fields\ImageField;
+use AhmedAliraqi\UiManager\Fields\SvgField;
 
 final readonly class FieldValueData
 {
@@ -66,6 +67,35 @@ final readonly class FieldValueData
         }
 
         return is_string($value) ? $value : '';
+    }
+
+    /**
+     * Return the raw SVG markup for SVG icon fields.
+     *
+     * Reads the stored filename from the icons path configured on the field
+     * (or the global config('ui-manager.svg.icons_path') fallback).
+     * Returns an empty string when the file is missing or the field is not an SvgField.
+     */
+    public function toSvg(): string
+    {
+        if (! ($this->definition instanceof SvgField)) {
+            return '';
+        }
+
+        $filename = is_string($this->rawValue) ? trim($this->rawValue) : '';
+
+        if ($filename === '') {
+            return '';
+        }
+
+        $iconsPath = $this->definition->getResolvedIconsPath();
+        $fullPath  = rtrim($iconsPath, '/\\') . DIRECTORY_SEPARATOR . basename($filename);
+
+        if (! file_exists($fullPath) || ! is_readable($fullPath)) {
+            return '';
+        }
+
+        return (string) file_get_contents($fullPath);
     }
 
     public function isMedia(): bool

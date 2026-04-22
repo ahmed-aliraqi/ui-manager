@@ -13,6 +13,14 @@ namespace AhmedAliraqi\UiManager\Fields;
  *   Field::select('status')->options(['draft' => 'Draft', 'published' => 'Published'])
  *   Field::image('cover')
  *   Field::file('cv')->accept(['application/pdf'])
+ *   Field::color('bg_color')
+ *   Field::svg('icon')
+ *   Field::date('published_at')
+ *   Field::time('start_time')
+ *   Field::datetime('event_at')
+ *   Field::dateRange('range')
+ *   Field::url('website')
+ *   Field::price('price')->currency('USD')
  */
 final class Field
 {
@@ -44,5 +52,45 @@ final class Field
     public static function file(string $name): FileField
     {
         return new FileField($name);
+    }
+
+    public static function color(string $name): ColorField
+    {
+        return new ColorField($name);
+    }
+
+    public static function svg(string $name): SvgField
+    {
+        return new SvgField($name);
+    }
+
+    public static function date(string $name): DateField
+    {
+        return new DateField($name);
+    }
+
+    public static function time(string $name): TimeField
+    {
+        return new TimeField($name);
+    }
+
+    public static function datetime(string $name): DatetimeField
+    {
+        return new DatetimeField($name);
+    }
+
+    public static function dateRange(string $name): DateRangeField
+    {
+        return new DateRangeField($name);
+    }
+
+    public static function url(string $name): UrlField
+    {
+        return new UrlField($name);
+    }
+
+    public static function price(string $name): PriceField
+    {
+        return new PriceField($name);
     }
 }
