@@ -1,20 +1,20 @@
 {
-  "_RepeatableSection-BmcCRnJ1.js": {
-    "file": "chunks/RepeatableSection-BmcCRnJ1.js",
+  "_RepeatableSection-B0Q8l9tr.js": {
+    "file": "chunks/RepeatableSection-B0Q8l9tr.js",
     "name": "RepeatableSection",
     "imports": [
       "resources/js/ui-manager/app.js"
     ],
     "css": [
-      "assets/RepeatableSection-DSoD3Fx9.css"
+      "assets/RepeatableSection-O7VuMjou.css"
     ]
   },
-  "_RepeatableSection-DSoD3Fx9.css": {
-    "file": "assets/RepeatableSection-DSoD3Fx9.css",
-    "src": "_RepeatableSection-DSoD3Fx9.css"
+  "_RepeatableSection-O7VuMjou.css": {
+    "file": "assets/RepeatableSection-O7VuMjou.css",
+    "src": "_RepeatableSection-O7VuMjou.css"
   },
   "resources/js/ui-manager/app.js": {
-    "file": "app-BN6b9Goq.js",
+    "file": "app-BttL_g1w.js",
     "name": "app",
     "src": "resources/js/ui-manager/app.js",
     "isEntry": true,
@@ -24,21 +24,21 @@
       "resources/js/ui-manager/pages/SectionEdit.vue"
     ],
     "css": [
-      "assets/app-D63HcVXc.css"
+      "assets/app-DcukI_XN.css"
     ]
   },
   "resources/js/ui-manager/pages/PageShow.vue": {
-    "file": "chunks/PageShow-BhacgOLJ.js",
+    "file": "chunks/PageShow-wdRPvgLj.js",
     "name": "PageShow",
     "src": "resources/js/ui-manager/pages/PageShow.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/ui-manager/app.js",
-      "_RepeatableSection-BmcCRnJ1.js"
+      "_RepeatableSection-B0Q8l9tr.js"
     ]
   },
   "resources/js/ui-manager/pages/PagesIndex.vue": {
-    "file": "chunks/PagesIndex-DC4jelvC.js",
+    "file": "chunks/PagesIndex-BD90FDJ2.js",
     "name": "PagesIndex",
     "src": "resources/js/ui-manager/pages/PagesIndex.vue",
     "isDynamicEntry": true,
@@ -47,13 +47,13 @@
     ]
   },
   "resources/js/ui-manager/pages/SectionEdit.vue": {
-    "file": "chunks/SectionEdit-Ctrf1sY2.js",
+    "file": "chunks/SectionEdit-DOtDLXKN.js",
     "name": "SectionEdit",
     "src": "resources/js/ui-manager/pages/SectionEdit.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/ui-manager/app.js",
-      "_RepeatableSection-BmcCRnJ1.js"
+      "_RepeatableSection-B0Q8l9tr.js"
     ]
   }
 }

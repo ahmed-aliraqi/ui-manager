@@ -1,13 +1,13 @@
 <template>
   <div class="space-y-3">
     <!-- Selected icon preview -->
-    <div v-if="selectedIcon" class="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+    <div v-if="modelValue" class="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
       <div
         class="w-10 h-10 text-foreground flex items-center justify-center shrink-0"
-        v-html="selectedIcon.content"
+        v-html="modelValue"
       />
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium truncate">{{ selectedIcon.name }}</p>
+        <p class="text-sm font-medium truncate">{{ selectedName }}</p>
         <p class="text-xs text-muted-foreground">SVG icon</p>
       </div>
       <button
@@ -33,7 +33,7 @@
       </div>
 
       <div v-else-if="filteredIcons.length === 0" class="text-sm text-muted-foreground py-4 text-center">
-        {{ icons.length === 0 ? 'No icons found. Add SVG files to resources/ui-icons/' : 'No matching icons.' }}
+        {{ icons.length === 0 ? 'No icons found. Add SVG files to resources/icons/ inside the package.' : 'No matching icons.' }}
       </div>
 
       <div v-else class="grid grid-cols-6 gap-1 max-h-60 overflow-y-auto p-1 rounded-md border">
@@ -41,11 +41,11 @@
           v-for="icon in filteredIcons"
           :key="icon.name"
           type="button"
-          @click="$emit('update:modelValue', icon.name)"
+          @click="$emit('update:modelValue', icon.content)"
           :title="icon.name"
           :class="[
             'flex items-center justify-center w-full aspect-square rounded-md border transition-colors p-1.5',
-            modelValue === icon.name
+            modelValue === icon.content
               ? 'border-primary bg-primary/10 text-primary'
               : 'border-transparent hover:border-input hover:bg-muted text-foreground',
           ]"
@@ -80,9 +80,11 @@ onMounted(async () => {
   }
 })
 
-const selectedIcon = computed(() =>
-  props.modelValue ? icons.value.find(i => i.name === props.modelValue) : null
-)
+// Find the icon name matching current stored SVG content (for display only)
+const selectedName = computed(() => {
+  if (!props.modelValue) return ''
+  return icons.value.find(i => i.content === props.modelValue)?.name ?? 'icon'
+})
 
 const filteredIcons = computed(() => {
   if (!search.value) return icons.value

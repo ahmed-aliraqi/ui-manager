@@ -47,6 +47,11 @@ class PriceField extends BaseField
         return $this;
     }
 
+    public function getCurrency(): string
+    {
+        return $this->currency;
+    }
+
     public function getType(): string
     {
         return 'price';

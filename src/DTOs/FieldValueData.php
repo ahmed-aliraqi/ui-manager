@@ -7,6 +7,7 @@ namespace AhmedAliraqi\UiManager\DTOs;
 use AhmedAliraqi\UiManager\Fields\BaseField;
 use AhmedAliraqi\UiManager\Fields\FileField;
 use AhmedAliraqi\UiManager\Fields\ImageField;
+use AhmedAliraqi\UiManager\Fields\PriceField;
 use AhmedAliraqi\UiManager\Fields\SvgField;
 
 final readonly class FieldValueData
@@ -72,9 +73,8 @@ final readonly class FieldValueData
     /**
      * Return the raw SVG markup for SVG icon fields.
      *
-     * Reads the stored filename from the icons path configured on the field
-     * (or the global config('ui-manager.svg.icons_path') fallback).
-     * Returns an empty string when the file is missing or the field is not an SvgField.
+     * The stored value IS the SVG content string (not a filename).
+     * Returns an empty string when no value is set or the field is not an SvgField.
      */
     public function toSvg(): string
     {
@@ -82,20 +82,44 @@ final readonly class FieldValueData
             return '';
         }
 
-        $filename = is_string($this->rawValue) ? trim($this->rawValue) : '';
+        return is_string($this->rawValue) ? trim($this->rawValue) : '';
+    }
 
-        if ($filename === '') {
+    /**
+     * Return the numeric amount from a price field.
+     */
+    public function amount(): float|null
+    {
+        if (! ($this->definition instanceof PriceField)) {
+            return null;
+        }
+
+        $value = $this->rawValue;
+
+        if (is_array($value) && array_key_exists('amount', $value)) {
+            return $value['amount'] !== null ? (float) $value['amount'] : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Return the currency string from a price field.
+     * Falls back to the currency defined on the field definition.
+     */
+    public function currency(): string
+    {
+        if (! ($this->definition instanceof PriceField)) {
             return '';
         }
 
-        $iconsPath = $this->definition->getResolvedIconsPath();
-        $fullPath  = rtrim($iconsPath, '/\\') . DIRECTORY_SEPARATOR . basename($filename);
+        $value = $this->rawValue;
 
-        if (! file_exists($fullPath) || ! is_readable($fullPath)) {
-            return '';
+        if (is_array($value) && isset($value['currency'])) {
+            return (string) $value['currency'];
         }
 
-        return (string) file_get_contents($fullPath);
+        return $this->definition->getCurrency();
     }
 
     public function isMedia(): bool
