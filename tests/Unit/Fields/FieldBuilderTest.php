@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace AhmedAliraqi\UiManager\Tests\Unit\Fields;
 
+use AhmedAliraqi\UiManager\Fields\ColorField;
+use AhmedAliraqi\UiManager\Fields\DateField;
+use AhmedAliraqi\UiManager\Fields\DateRangeField;
+use AhmedAliraqi\UiManager\Fields\DatetimeField;
+use AhmedAliraqi\UiManager\Fields\EditorField;
 use AhmedAliraqi\UiManager\Fields\Field;
 use AhmedAliraqi\UiManager\Fields\FileField;
 use AhmedAliraqi\UiManager\Fields\ImageField;
+use AhmedAliraqi\UiManager\Fields\PriceField;
 use AhmedAliraqi\UiManager\Fields\SelectField;
+use AhmedAliraqi\UiManager\Fields\SvgField;
 use AhmedAliraqi\UiManager\Fields\TextField;
-use AhmedAliraqi\UiManager\Fields\EditorField;
+use AhmedAliraqi\UiManager\Fields\TimeField;
+use AhmedAliraqi\UiManager\Fields\UrlField;
 use AhmedAliraqi\UiManager\Tests\TestCase;
 
 final class FieldBuilderTest extends TestCase
@@ -142,5 +150,134 @@ final class FieldBuilderTest extends TestCase
     {
         $this->assertSame('App Name', Field::text('app_name')->getLabel());
         $this->assertSame('My Field', Field::text('my-field')->getLabel());
+    }
+
+    public function test_color_field(): void
+    {
+        $field = Field::color('brand_color');
+
+        $this->assertInstanceOf(ColorField::class, $field);
+        $this->assertSame('color', $field->getType());
+        $this->assertFalse($field->toArray()['alpha']);
+    }
+
+    public function test_color_field_with_alpha(): void
+    {
+        $field = Field::color('overlay')->alpha();
+
+        $this->assertTrue($field->toArray()['alpha']);
+    }
+
+    public function test_svg_field(): void
+    {
+        $field = Field::svg('icon');
+
+        $this->assertInstanceOf(SvgField::class, $field);
+        $this->assertSame('svg', $field->getType());
+    }
+
+    public function test_svg_field_custom_icons_path(): void
+    {
+        $field = Field::svg('icon')->iconsPath('/custom/icons');
+
+        $this->assertSame('/custom/icons', $field->getResolvedIconsPath());
+    }
+
+    public function test_date_field(): void
+    {
+        $field = Field::date('published_at');
+
+        $this->assertInstanceOf(DateField::class, $field);
+        $this->assertSame('date', $field->getType());
+    }
+
+    public function test_date_field_min_max(): void
+    {
+        $field = Field::date('event_date')->min('2024-01-01')->max('2024-12-31');
+
+        $array = $field->toArray();
+        $this->assertSame('2024-01-01', $array['min']);
+        $this->assertSame('2024-12-31', $array['max']);
+    }
+
+    public function test_time_field(): void
+    {
+        $field = Field::time('start_time');
+
+        $this->assertInstanceOf(TimeField::class, $field);
+        $this->assertSame('time', $field->getType());
+    }
+
+    public function test_datetime_field(): void
+    {
+        $field = Field::datetime('scheduled_at');
+
+        $this->assertInstanceOf(DatetimeField::class, $field);
+        $this->assertSame('datetime', $field->getType());
+    }
+
+    public function test_datetime_field_min_max(): void
+    {
+        $field = Field::datetime('meeting_at')
+            ->min('2024-01-01T08:00')
+            ->max('2024-12-31T18:00');
+
+        $array = $field->toArray();
+        $this->assertSame('2024-01-01T08:00', $array['min']);
+        $this->assertSame('2024-12-31T18:00', $array['max']);
+    }
+
+    public function test_date_range_field(): void
+    {
+        $field = Field::dateRange('availability');
+
+        $this->assertInstanceOf(DateRangeField::class, $field);
+        $this->assertSame('date_range', $field->getType());
+    }
+
+    public function test_date_range_field_default_range(): void
+    {
+        $field = Field::dateRange('promotion')->defaultRange('2024-06-01', '2024-06-30');
+
+        $default = $field->getDefault();
+        $this->assertSame('2024-06-01', $default['start']);
+        $this->assertSame('2024-06-30', $default['end']);
+    }
+
+    public function test_url_field(): void
+    {
+        $field = Field::url('website');
+
+        $this->assertInstanceOf(UrlField::class, $field);
+        $this->assertSame('url', $field->getType());
+        $this->assertContains('url', $field->getRules());
+    }
+
+    public function test_url_field_does_not_duplicate_url_rule(): void
+    {
+        $field = Field::url('website')->rules(['required', 'url']);
+
+        $this->assertSame(1, count(array_filter($field->getRules(), fn ($r) => $r === 'url')));
+    }
+
+    public function test_price_field(): void
+    {
+        $field = Field::price('amount');
+
+        $this->assertInstanceOf(PriceField::class, $field);
+        $this->assertSame('price', $field->getType());
+    }
+
+    public function test_price_field_options(): void
+    {
+        $field = Field::price('cost')
+            ->currency('USD')
+            ->decimals(2)
+            ->currencies(['USD', 'EUR', 'GBP']);
+
+        $array = $field->toArray();
+        $this->assertSame('USD', $array['currency']);
+        $this->assertSame(2, $array['decimals']);
+        $this->assertSame(['USD', 'EUR', 'GBP'], $array['currencies']);
     }
 }

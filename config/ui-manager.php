@@ -74,6 +74,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | SVG Icon Picker
+    |--------------------------------------------------------------------------
+    | Absolute path to the directory containing .svg icon files.
+    | The API endpoint (GET /api/svg-icons) reads this directory and returns
+    | icon names + content to the dashboard.
+    | FieldValueData::toSvg() also uses this path.
+    */
+    'svg' => [
+        'icons_path' => null, // null = resource_path('ui-icons') at runtime
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache
     |--------------------------------------------------------------------------
     */
