@@ -10,15 +10,20 @@ use AhmedAliraqi\UiManager\Fields\ImageField;
 
 final readonly class FieldValueData
 {
+    /**
+     * @param bool $parseVariables  Set to false for repeatable section items,
+     *                              where %placeholder% expansion is intentionally disabled.
+     */
     public function __construct(
         public readonly string $name,
         public readonly mixed $rawValue,
         public readonly BaseField $definition,
+        public readonly bool $parseVariables = true,
     ) {}
 
     public function getValue(): mixed
     {
-        if (is_string($this->rawValue)) {
+        if ($this->parseVariables && is_string($this->rawValue)) {
             return app(\AhmedAliraqi\UiManager\Services\VariableParser::class)
                 ->parse($this->rawValue);
         }
@@ -29,6 +34,11 @@ final readonly class FieldValueData
     public function getString(): string
     {
         $value = $this->getValue();
+
+        // Arrays (e.g. media field objects) have no meaningful string representation.
+        if (is_array($value)) {
+            return '';
+        }
 
         return is_string($value) ? $value : (string) ($value ?? '');
     }

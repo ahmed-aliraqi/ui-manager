@@ -24,7 +24,8 @@ final class SectionItemView
         $fieldDef  = $fieldsMap[$name] ?? Field::text($name);
         $rawValue  = $this->data[$name] ?? $fieldDef->getDefault();
 
-        return new FieldValueData($name, $rawValue, $fieldDef);
+        // Variables are intentionally disabled inside repeatable items.
+        return new FieldValueData($name, $rawValue, $fieldDef, parseVariables: false);
     }
 
     /** @return array<string, mixed> */

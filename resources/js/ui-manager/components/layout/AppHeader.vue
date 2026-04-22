@@ -1,5 +1,5 @@
 <template>
-  <header class="h-14 border-b bg-background flex items-center px-6 gap-4 shrink-0">
+  <header class="fixed top-0 left-64 right-0 h-14 z-30 border-b bg-background flex items-center px-6 gap-4">
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-1.5 text-sm text-muted-foreground">
       <RouterLink to="/" class="hover:text-foreground transition-colors">UI Manager</RouterLink>

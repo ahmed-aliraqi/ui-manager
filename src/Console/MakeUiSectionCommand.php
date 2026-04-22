@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AhmedAliraqi\UiManager\Console;
 
+use AhmedAliraqi\UiManager\Core\Page;
+use AhmedAliraqi\UiManager\Services\PageRegistry;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
@@ -23,8 +25,7 @@ final class MakeUiSectionCommand extends Command
         $className = $this->argument('name') ?? $this->ask('Section class name (e.g. Banner)');
         $className = (string) $className;
 
-        $pageClass = $this->option('page')
-            ?? $this->ask('Page class (e.g. App\\Ui\\Pages\\Home)', 'App\\Ui\\Pages\\Home');
+        $pageClass = $this->option('page') ?? $this->selectPage();
 
         $layout     = $this->option('layout') ?? 'default';
         $repeatable = (bool) $this->option('repeatable');
@@ -67,6 +68,48 @@ final class MakeUiSectionCommand extends Command
         $this->line("  Repeatable: <comment>" . ($repeatable ? 'yes' : 'no') . "</comment>");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Auto-discover registered pages and show an interactive choice list.
+     * Falls back to a free-text ask when no pages are registered yet.
+     */
+    private function selectPage(): string
+    {
+        /** @var array<string, Page> $pages */
+        $pages = app(PageRegistry::class)->all();
+
+        if (empty($pages)) {
+            return (string) $this->ask(
+                'Page class (e.g. App\\Ui\\Pages\\Home)',
+                'App\\Ui\\Pages\\Home',
+            );
+        }
+
+        $classes = array_values(array_map('get_class', $pages));
+        $display = array_map(
+            fn (Page $p) => get_class($p) . '  [' . $p->getName() . ']',
+            array_values($pages),
+        );
+        $customLabel = 'Enter class manually...';
+        $display[]   = $customLabel;
+
+        $selected = (string) $this->choice(
+            'Select the page this section belongs to',
+            $display,
+            0,
+        );
+
+        if ($selected === $customLabel) {
+            return (string) $this->ask(
+                'Page class (e.g. App\\Ui\\Pages\\Home)',
+                'App\\Ui\\Pages\\Home',
+            );
+        }
+
+        $idx = array_search($selected, $display, true);
+
+        return $classes[$idx] ?? 'App\\Ui\\Pages\\Home';
     }
 
     private function buildStub(

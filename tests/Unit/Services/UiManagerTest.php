@@ -14,6 +14,7 @@ use AhmedAliraqi\UiManager\Services\SectionRegistry;
 use AhmedAliraqi\UiManager\Services\UiManager;
 use AhmedAliraqi\UiManager\Support\RepeatableSectionView;
 use AhmedAliraqi\UiManager\Support\SectionView;
+use AhmedAliraqi\UiManager\Variables\VariableRegistry;
 use AhmedAliraqi\UiManager\Tests\TestCase;
 
 final class UiManagerTest extends TestCase
@@ -167,6 +168,86 @@ final class UiManagerTest extends TestCase
     {
         $this->manager->flushCache('test-page', 'test-section');
         $this->assertTrue(true);
+    }
+
+    // ------------------------------------------------------------------ repeatable: no variables
+
+    public function test_repeatable_item_field_does_not_parse_variables(): void
+    {
+        app(VariableRegistry::class)->value('site.name', 'My Site');
+
+        [$page, $section] = $this->makePageAndRepeatableSection();
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        UiContent::create([
+            'layout'     => 'default',
+            'page'       => 'test-page',
+            'section'    => 'test-repeatable',
+            'fields'     => ['label' => 'Visit %site.name%'],
+            'sort_order' => 0,
+        ]);
+
+        $view  = $this->manager->section('test-repeatable');
+        $label = $view->first()->field('label')->getString();
+
+        // %site.name% must NOT be replaced inside repeatable items
+        $this->assertSame('Visit %site.name%', $label);
+    }
+
+    // ------------------------------------------------------------------ image defaults
+
+    public function test_image_field_with_url_string_default_returns_url(): void
+    {
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $section = new class($page::class) extends Section {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'img-section';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array
+            {
+                return [Field::image('logo')->default('https://example.com/logo.png')];
+            }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        $url = $this->manager->section('img-section')->field('logo')->getUrl();
+
+        $this->assertSame('https://example.com/logo.png', $url);
+    }
+
+    public function test_image_field_get_string_returns_empty_not_array_cast(): void
+    {
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $section = new class($page::class) extends Section {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'media-section';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array { return [Field::image('photo')]; }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        UiContent::create([
+            'layout'  => 'default',
+            'page'    => 'test-page',
+            'section' => 'media-section',
+            'fields'  => ['photo' => ['id' => 99, 'url' => '/photo.jpg', 'filename' => 'photo.jpg']],
+        ]);
+
+        // getString() on a media field must return '' — never 'Array'
+        $str = $this->manager->section('media-section')->field('photo')->getString();
+
+        $this->assertSame('', $str);
     }
 
     // ------------------------------------------------------------------

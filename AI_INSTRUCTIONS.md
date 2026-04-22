@@ -99,6 +99,10 @@ Never write directly to Storage for UI Manager media. Always go through `MediaUp
 | Rebuilding the whole component because one thing changed | Find the one thing, change only that |
 | Registering API routes after web catch-all | API routes must come first in `registerRoutes()` |
 | Calling `validateFields` that ignores missing keys | Use `normalizeFields` which fills defaults for all declared fields |
+| Using `%section.field%` for media fields in text context | Use `%section.field:url%` to get the URL string |
+| Expecting `getString()` to return a URL for image fields | Call `getUrl()` or use the `:url` variable modifier |
+| Parsing variables inside repeatable item fields | Variables are disabled in `SectionItemView` — by design |
+| Silent `catch {}` in async Vue operations | Always `console.error` and surface error state to the user |
 
 ---
 

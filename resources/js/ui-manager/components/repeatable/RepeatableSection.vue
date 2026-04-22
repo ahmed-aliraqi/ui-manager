@@ -62,6 +62,9 @@
       <p class="text-sm">No items yet — add your first one below.</p>
     </div>
 
+    <!-- Reorder error -->
+    <p v-if="reorderError" class="text-sm text-destructive mb-3">{{ reorderError }}</p>
+
     <!-- Add new item -->
     <button
       type="button"
@@ -111,6 +114,7 @@ const loading = ref(false)
 
 // Drag-and-drop state
 const dragIndex = ref(null)
+const reorderError = ref(null)
 
 onMounted(async () => {
   loading.value = true
@@ -182,14 +186,18 @@ function onDragOver(targetIdx) {
 
 async function onDragEnd() {
   dragIndex.value = null
-  // Persist only items that are already saved (have a real DB id)
+  reorderError.value = null
+
+  // Only persist items that have a real DB id (unsaved defaults are excluded)
   const ids = items.value.filter(i => i.id !== null).map(i => i.id)
-  if (ids.length > 0) {
-    try {
-      await store.reorderItems(props.page, props.section, ids)
-    } catch {
-      // Non-fatal: order change failed, but local state already reflects it
-    }
+  if (ids.length < 2) return  // nothing to reorder
+
+  try {
+    await store.reorderItems(props.page, props.section, ids)
+  } catch (err) {
+    // Surface the error so the user knows the save failed
+    reorderError.value = 'Reorder failed — please try again.'
+    console.error('[ui-manager] reorderItems failed:', err)
   }
 }
 </script>
