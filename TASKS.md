@@ -43,6 +43,13 @@
 - [x] `v-cloak` scoped to `#ui-manager-app` div (not `<body>`) to prevent page-blank bug
 - [x] Vite `publicDir: false` prevents recursive directory nesting during build
 - [x] Manual manifest reading in `DashboardController` instead of `@vite()` directive
+- [x] **Variable modifiers** — `%section.field:url%`, `:name`, `:size` now resolve correctly for media fields; regex extended in `VariableParser`
+- [x] **Variables disabled in repeatable items** — `SectionItemView` passes `parseVariables: false` to `FieldValueData`; avoids cross-row references and circular resolution
+- [x] **`getString()` on media fields** — returns `''` instead of `'Array'` when rawValue is an array
+- [x] **Default image as URL string** — `Field::image('x')->default('https://...')` now works correctly via `getUrl()`
+- [x] **Fixed dashboard layout** — sidebar and header are `position: fixed`; main content scrolls independently
+- [x] **Drag & drop error surfacing** — reorder failures now shown as inline message; `console.error` logged; silent catch removed
+- [x] **`make:ui-section` interactive page selection** — auto-discovers registered pages via `PageRegistry::all()`, shows `choice()` list; falls back to free-text when none are registered
 
 ### Artisan generators
 - [x] `make:ui-page`
@@ -51,7 +58,10 @@
 ### Tests
 - [x] Feature tests: page controller, section CRUD, repeatable, reorder, media upload, image replacement, media cleanup on item delete
 - [x] Unit tests: `UiManager` section/repeatable views, default fallback, DB value precedence, cache-key fix with caching enabled, repeatable defaults
-- [x] All 48 tests passing
+- [x] Variable modifier tests: `:url`, `:name`, `:size`, unknown key, `extractKeys` includes modifier
+- [x] Repeatable no-variables test: `getString()` returns raw text without substitution
+- [x] Image default test: URL string default resolves via `getUrl()`; `getString()` on array returns `''`
+- [x] All 57 tests passing
 
 ---
 
@@ -64,7 +74,7 @@
 ## ❌ Pending
 
 ### Dashboard
-- [ ] Toast/notification system for save success/error (currently inline text feedback only)
+- [ ] Toast/notification system for save success/error (currently inline text feedback; reorder errors shown inline)
 - [ ] Keyboard shortcut `Ctrl+S` / `Cmd+S` to submit the active form
 - [ ] Unsaved-changes warning when navigating away with a dirty form
 - [ ] Loading skeleton for section form while `fetchSection` is in flight

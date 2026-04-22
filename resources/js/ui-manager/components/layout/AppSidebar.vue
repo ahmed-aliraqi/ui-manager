@@ -1,5 +1,5 @@
 <template>
-  <aside class="w-64 min-h-screen bg-slate-900 text-slate-100 flex flex-col shrink-0">
+  <aside class="fixed left-0 top-0 h-screen w-64 bg-slate-900 text-slate-100 flex flex-col z-40 overflow-y-auto">
     <!-- Logo / Title -->
     <div class="p-5 border-b border-slate-700">
       <div class="flex items-center gap-2">

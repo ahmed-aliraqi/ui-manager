@@ -1,5 +1,15 @@
 # Dashboard
 
+## Layout
+
+The dashboard uses a **fixed sidebar + fixed header** layout:
+
+- **Sidebar** (`AppSidebar`): `position: fixed; left: 0; top: 0; height: 100vh; width: 256px; z-index: 40` — always visible, scrollable independently.
+- **Header** (`AppHeader`): `position: fixed; top: 0; left: 256px; right: 0; z-index: 30` — spans the content area above the main scroll.
+- **Main content** (`<main>`): `margin-left: 256px; padding-top: 56px` — scrolls independently without affecting sidebar or header.
+
+---
+
 ## SPA architecture
 
 The dashboard is a **Vue 3 + Pinia + Vue Router** single-page application. The PHP side serves a single Blade shell (`resources/views/dashboard.blade.php`) for every route under the configured prefix (default: `/ui-manager`). The shell mounts the Vue app and passes a config object via `window.__UI_MANAGER_CONFIG__`.
@@ -77,12 +87,16 @@ PageShow
 3. `provide('sectionName', section)` so `FieldRenderer` can render the `%variable%` copy button.
 4. On submit → `resolvePendingUploads()` uploads any pending image files first → `store.saveSectionFields()` → PUT `/api/pages/{page}/sections/{section}`.
 
+## Repeatable sections — variable behaviour
+
+**Variables (`%placeholder%`) are NOT parsed inside repeatable items.** `SectionItemView` creates `FieldValueData` with `parseVariables: false`. This keeps repeatable rows as pure data; cross-referencing across rows or other sections would be unpredictable.
+
 ## RepeatableSection
 
 1. Mounted → `store.fetchSection()` → `data.items` array loaded.
 2. Default items (`id: null`) auto-expanded.
 3. Each item rendered as a collapsible card with `RepeatableItemForm` inside.
-4. **Drag-and-drop**: items have `draggable="true"`. `onDragOver` splices the array live; `onDragEnd` calls `store.reorderItems()` → POST `.../reorder`.
+4. **Drag-and-drop**: items have `draggable="true"`. `onDragOver` splices the array live; `onDragEnd` calls `store.reorderItems()` → POST `.../reorder`. Errors are surfaced via an inline `reorderError` message (no longer silently swallowed).
 5. Add-item form at the bottom (Cancel button shown only for truly blank forms).
 6. Delete button hidden for `id: null` (default/unsaved) items.
 

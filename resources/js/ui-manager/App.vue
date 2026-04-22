@@ -1,19 +1,19 @@
 <template>
-  <div class="min-h-screen flex bg-background">
+  <div class="bg-background min-h-screen">
+    <!-- Fixed sidebar: 256px wide, full viewport height -->
     <AppSidebar />
-    <div class="flex-1 flex flex-col min-w-0">
-      <AppHeader />
-      <main class="flex-1 p-6 overflow-auto">
+    <!-- Fixed header: starts at sidebar right edge -->
+    <AppHeader />
+    <!-- Scrollable content area offset by sidebar + header -->
+    <main class="ml-64 pt-14 min-h-screen overflow-y-auto">
+      <div class="p-6">
         <RouterView v-slot="{ Component, route }">
-          <Transition
-            name="fade"
-            mode="out-in"
-          >
+          <Transition name="fade" mode="out-in">
             <component :is="Component" :key="route.path" />
           </Transition>
         </RouterView>
-      </main>
-    </div>
+      </div>
+    </main>
   </div>
 </template>
 
