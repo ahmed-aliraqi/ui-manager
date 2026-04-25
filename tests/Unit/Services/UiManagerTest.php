@@ -99,7 +99,7 @@ final class UiManagerTest extends TestCase
             'section' => 'test-section',
             'fields'  => ['title' => 'Updated Title'],
         ]);
-        $this->manager->flushCache('test-page', 'test-section');
+        $this->manager->flushCache('test-page', 'test-section', 'default');
 
         // After flush the DB value must be returned — not the stale cached default
         $after = $this->manager->section('test-section')->field('title')->getString();
@@ -127,36 +127,35 @@ final class UiManagerTest extends TestCase
         $this->assertSame(['Item One', 'Item Two'], $labels);
     }
 
-    public function test_repeatable_section_falls_back_to_section_defaults(): void
+    public function test_section_layout_variant_returns_separate_data(): void
     {
-        $page = new class extends Page {
-            protected string $name = 'test-page';
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $sectionA = new class($page::class) extends Section {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'hero';
+            protected string $layout = 'homepage';
+            protected string $page   = '';
+            public function fields(): array { return [Field::text('title')->default('Homepage default')]; }
         };
 
-        $section = new class($page::class) extends Section implements Repeatable {
+        $sectionB = new class($page::class) extends Section {
             public function __construct(string $pageClass) { $this->page = $pageClass; }
-            protected string $name    = 'test-repeatable';
-            protected string $layout  = 'default';
-            protected string $page    = '';
-
-            public function fields(): array { return [Field::text('label')]; }
-
-            public function default(): array
-            {
-                return [
-                    ['label' => 'Default A'],
-                    ['label' => 'Default B'],
-                ];
-            }
+            protected string $name   = 'hero';
+            protected string $layout = 'landing';
+            protected string $page   = '';
+            public function fields(): array { return [Field::text('title')->default('Landing default')]; }
         };
 
         $this->pages->register($page);
-        $this->sections->register($section);
+        $this->sections->register($sectionA);
+        $this->sections->register($sectionB);
 
-        $view   = $this->manager->section('test-repeatable');
-        $labels = array_map(fn ($item) => $item->field('label')->getString(), iterator_to_array($view));
+        UiContent::create(['layout' => 'homepage', 'page' => 'test-page', 'section' => 'hero', 'fields' => ['title' => 'Homepage DB']]);
+        UiContent::create(['layout' => 'landing',  'page' => 'test-page', 'section' => 'hero', 'fields' => ['title' => 'Landing DB']]);
 
-        $this->assertSame(['Default A', 'Default B'], $labels);
+        $this->assertSame('Homepage DB', $this->manager->section('hero', 'homepage')->field('title')->getString());
+        $this->assertSame('Landing DB',  $this->manager->section('hero', 'landing')->field('title')->getString());
     }
 
     public function test_section_or_null_returns_null_for_unknown(): void
@@ -264,8 +263,7 @@ final class UiManagerTest extends TestCase
             protected string $layout = 'default';
             protected string $page   = '';
 
-            public function fields(): array { return [Field::text('title')]; }
-            public function default(): array { return ['title' => 'Default Title']; }
+            public function fields(): array { return [Field::text('title')->default('Default Title')]; }
         };
 
         return [$page, $section];

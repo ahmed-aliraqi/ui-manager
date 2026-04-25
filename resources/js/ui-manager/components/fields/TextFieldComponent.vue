@@ -26,6 +26,8 @@ const props = defineProps({ id: String, field: Object, modelValue: { default: nu
 defineEmits(['update:modelValue'])
 
 const showAutocomplete = computed(() =>
-  typeof props.modelValue === 'string' && props.modelValue.includes('%')
+  props.field.variable_formats?.length &&
+  typeof props.modelValue === 'string' &&
+  props.modelValue.includes('%')
 )
 </script>

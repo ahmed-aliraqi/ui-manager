@@ -35,28 +35,39 @@ php artisan vendor:publish --tag=ui-manager-assets
 ```
 resources/js/ui-manager/
 ├── app.js                    Entry point — creates Vue app, mounts to #ui-manager-app
-├── App.vue                   Root layout shell
+├── App.vue                   Root layout shell + ToastContainer mount
 ├── assets/app.css            TailwindCSS v4 @theme variables
 ├── composables/
 │   ├── useApi.js             Axios instance pointed at /ui-manager/api
-│   └── useToast.js           Toast notifications
+│   ├── useConfig.js          Reads window.__UI_MANAGER_CONFIG__ (locales, etc.)
+│   └── useToast.js           Module-level toast state (toasts, toast(), dismiss())
 ├── components/
 │   ├── layout/
-│   │   ├── AppHeader.vue     Top bar
-│   │   └── AppSidebar.vue    Page list navigation
+│   │   ├── AppHeader.vue       Top bar + Variables button
+│   │   ├── AppSidebar.vue      Page list navigation
+│   │   ├── ToastContainer.vue  Global toast renderer (Teleport to body)
+│   │   └── VariableBrowser.vue Slide-in panel — searchable variable list with copy
 │   ├── fields/
-│   │   ├── FieldRenderer.vue             Dispatches to the right field component
+│   │   ├── FieldRenderer.vue             Dispatches to the right field component; accepts `error` prop
 │   │   ├── TextFieldComponent.vue
 │   │   ├── TextareaFieldComponent.vue
 │   │   ├── EditorFieldComponent.vue      contenteditable rich text
 │   │   ├── SelectFieldComponent.vue
 │   │   ├── ImageFieldComponent.vue       Deferred upload (see below)
 │   │   ├── FileFieldComponent.vue
+│   │   ├── ColorFieldComponent.vue
+│   │   ├── DateFieldComponent.vue
+│   │   ├── TimeFieldComponent.vue
+│   │   ├── DatetimeFieldComponent.vue
+│   │   ├── DateRangeFieldComponent.vue
+│   │   ├── UrlFieldComponent.vue
+│   │   ├── PriceFieldComponent.vue
 │   │   └── VariableAutocomplete.vue
 │   ├── repeatable/
-│   │   ├── RepeatableSection.vue         Item list + drag-sort + add form
-│   │   └── RepeatableItemForm.vue        Per-item edit form
-│   ├── SectionForm.vue                   Non-repeatable section edit form
+│   │   ├── RepeatableSection.vue         Item list + drag-sort (insertion line) + add form
+│   │   └── RepeatableItemForm.vue        Per-item edit form with Ctrl+S support
+│   ├── SkeletonLoader.vue                Animated skeleton for loading states
+│   ├── SectionForm.vue                   Non-repeatable section edit form (toast, Ctrl+S, dirty warning, skeleton, validation)
 │   └── SectionPreview.vue                (legacy, unused — kept for reference)
 ├── pages/
 │   ├── PagesIndex.vue        Home screen — list of all pages
@@ -82,10 +93,14 @@ PageShow
 
 ## SectionForm (non-repeatable)
 
-1. Mounted → `store.fetchSection(page, section)` → fills `form` reactive object with DB values (falling back to field defaults).
+1. Mounted → `store.fetchSection(page, section)` → `SkeletonLoader` shown during fetch → fills `form` reactive object with DB values (falling back to field defaults).
 2. All fields rendered via `FieldRenderer` which selects the correct Vue component by `field.type`.
 3. `provide('sectionName', section)` so `FieldRenderer` can render the `%variable%` copy button.
 4. On submit → `resolvePendingUploads()` uploads any pending image files first → `store.saveSectionFields()` → PUT `/api/pages/{page}/sections/{section}`.
+5. **Keyboard shortcut**: `Ctrl+S` / `Cmd+S` submits the form from anywhere on the page.
+6. **Dirty tracking**: any form change sets `isDirty = true`; a `beforeunload` handler warns the user before leaving the page with unsaved changes.
+7. **Toast feedback**: success → green "Saved" toast; error → red "Save failed" toast.
+8. **Validation errors**: on a 422 response, field-level errors are parsed from `errors["fields.fieldName"]` and displayed below the relevant field via `FieldRenderer`'s `error` prop. Errors are cleared when the field is edited.
 
 ## Repeatable sections — variable behaviour
 
@@ -96,15 +111,31 @@ PageShow
 1. Mounted → `store.fetchSection()` → `data.items` array loaded.
 2. Default items (`id: null`) auto-expanded.
 3. Each item rendered as a collapsible card with `RepeatableItemForm` inside.
-4. **Drag-and-drop**: items have `draggable="true"`. `onDragOver` splices the array live; `onDragEnd` calls `store.reorderItems()` → POST `.../reorder`. Errors are surfaced via an inline `reorderError` message (no longer silently swallowed).
+4. **Drag-and-drop**: items have `draggable="true"`. `dropTargetIdx` tracks where the drop will land; a thin blue insertion line renders between items at the target position. `onDragEnd` moves the item locally and calls `store.reorderItems()` → POST `.../reorder`. Reorder failures surface as a toast (variant `warning`).
 5. Add-item form at the bottom (Cancel button shown only for truly blank forms).
-6. Delete button hidden for `id: null` (default/unsaved) items.
+6. Delete button hidden for `id: null` (default/unsaved) items. Delete uses toast feedback on success/failure.
 
 ## RepeatableItemForm
 
 - Reuses the same `resolvePendingUploads()` pattern as `SectionForm`.
 - Calls `store.addItem()` when `item.id` is null (new or default), `store.updateItem()` when editing an existing row.
 - Emits `saved` with the returned record so the parent list updates immediately.
+- **Keyboard shortcut**: `Ctrl+S` / `Cmd+S` triggers save **only when the document focus is inside this form** (via `formRef.value.contains(document.activeElement)`), so multiple expanded items don't conflict.
+- **Toast feedback** and **validation error display** match `SectionForm`.
+
+## Toast system
+
+`useToast.js` holds a module-level `toasts` ref. Every call to `useToast()` accesses the same singleton state — no Pinia needed. `ToastContainer.vue` (mounted in `App.vue` via `<Teleport to="body">`) renders the list; individual components call `toast({ title, description, variant, duration })` to push a notification.
+
+Variants: `success` (green), `error` (red), `warning` (yellow), `default` (neutral).
+
+## Variable Browser
+
+`VariableBrowser.vue` is a slide-in panel triggered by the **"Variables"** button in `AppHeader`. It:
+- Loads variables from the Pinia store (`store.fetchVariables()`) if not already loaded.
+- Renders a searchable list of all `{ key, placeholder }` pairs from `GET /api/variables`.
+- One-click copies the placeholder string to the clipboard; shows an inline "Copied" confirmation.
+- Opens/closes with a smooth CSS transition; clicking the backdrop or the ✕ button closes it.
 
 ## Image upload — deferred model
 

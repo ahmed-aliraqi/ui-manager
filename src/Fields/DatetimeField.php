@@ -32,6 +32,13 @@ class DatetimeField extends BaseField
         return 'datetime';
     }
 
+    public function getVariableFormats(string $sectionName): array
+    {
+        $key = "{$sectionName}.{$this->getName()}";
+
+        return ["%{$key}%", "%{$key}:format(Y-m-d H:i)%"];
+    }
+
     public function toArray(): array
     {
         return array_merge(parent::toArray(), array_filter([

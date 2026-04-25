@@ -10,14 +10,15 @@ if (! function_exists('ui')) {
      *
      * Examples:
      *   ui()->section('banner')->field('title')
-     *   ui('banner')->field('title')   // shorthand
+     *   ui('banner')->field('title')                   // shorthand
+     *   ui('hero', layout: 'homepage')->field('title') // layout-specific variant
      */
-    function ui(?string $section = null): UiManager|\AhmedAliraqi\UiManager\Support\SectionView|\AhmedAliraqi\UiManager\Support\RepeatableSectionView
+    function ui(?string $section = null, ?string $layout = null): UiManager|\AhmedAliraqi\UiManager\Support\SectionView|\AhmedAliraqi\UiManager\Support\RepeatableSectionView
     {
         $manager = app(UiManager::class);
 
         if ($section !== null) {
-            return $manager->section($section);
+            return $manager->section($section, $layout);
         }
 
         return $manager;

@@ -14,12 +14,16 @@
         </RouterView>
       </div>
     </main>
+
+    <!-- Global toast notifications -->
+    <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import AppSidebar from './components/layout/AppSidebar.vue'
 import AppHeader from './components/layout/AppHeader.vue'
+import ToastContainer from './components/layout/ToastContainer.vue'
 import { useUiStore } from './stores/ui.js'
 import { onMounted } from 'vue'
 

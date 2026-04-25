@@ -56,9 +56,10 @@ class UiContent extends Model
     /**
      * Retrieve the single record for a non-repeatable section, or null.
      */
-    public static function findSection(string $page, string $section): ?self
+    public static function findSection(string $page, string $section, ?string $layout = null): ?self
     {
         return static::forSection($page, $section)
+            ->when($layout !== null, fn (Builder $q) => $q->where('layout', $layout))
             ->whereNull('sort_order')
             ->first();
     }
@@ -68,9 +69,10 @@ class UiContent extends Model
      *
      * @return Collection<int, static>
      */
-    public static function findRepeatableItems(string $page, string $section): Collection
+    public static function findRepeatableItems(string $page, string $section, ?string $layout = null): Collection
     {
         return static::forSection($page, $section)
+            ->when($layout !== null, fn (Builder $q) => $q->where('layout', $layout))
             ->whereNotNull('sort_order')
             ->ordered()
             ->get();

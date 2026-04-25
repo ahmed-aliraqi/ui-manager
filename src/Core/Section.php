@@ -34,16 +34,6 @@ abstract class Section implements HasFields
      */
     abstract public function fields(): array;
 
-    /**
-     * Default values to use when no database record exists.
-     *
-     * @return array<string, mixed>
-     */
-    public function default(): array
-    {
-        return [];
-    }
-
     public function getName(): string
     {
         return $this->name;
@@ -95,7 +85,7 @@ abstract class Section implements HasFields
     }
 
     /**
-     * Build a merged defaults array from declared field defaults + section default().
+     * Build a defaults array from declared field defaults.
      *
      * @return array<string, mixed>
      */
@@ -107,7 +97,7 @@ abstract class Section implements HasFields
             $defaults[$field->getName()] = $field->getDefault();
         }
 
-        return array_merge($defaults, $this->default());
+        return $defaults;
     }
 
     /**
@@ -124,7 +114,13 @@ abstract class Section implements HasFields
             'order'        => $this->getOrder(),
             'repeatable'   => $this->isRepeatable(),
             'fields'       => array_values(
-                array_map(fn (BaseField $f) => $f->toArray(), $this->fields())
+                array_map(function (BaseField $f) {
+                    $arr = $f->toArray();
+                    if ($f->isVariableEnabled()) {
+                        $arr['variable_formats'] = $f->getVariableFormats($this->getName());
+                    }
+                    return $arr;
+                }, $this->fields())
             ),
         ];
     }

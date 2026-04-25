@@ -24,12 +24,16 @@ final class UiManager
     ) {}
 
     /** @return SectionView|RepeatableSectionView */
-    public function section(string $name): SectionView|RepeatableSectionView
+    public function section(string $name, ?string $layout = null): SectionView|RepeatableSectionView
     {
-        $definition = $this->sectionRegistry->findByName($name);
+        $definition = $this->sectionRegistry->findByName($name, $layout);
 
         if ($definition === null) {
-            throw new \RuntimeException("UI section [{$name}] is not registered.");
+            $msg = $layout !== null
+                ? "UI section [{$name}] with layout [{$layout}] is not registered."
+                : "UI section [{$name}] is not registered.";
+
+            throw new \RuntimeException($msg);
         }
 
         return $definition->isRepeatable()
@@ -38,10 +42,10 @@ final class UiManager
     }
 
     /** @return SectionView|RepeatableSectionView|null */
-    public function sectionOrNull(string $name): SectionView|RepeatableSectionView|null
+    public function sectionOrNull(string $name, ?string $layout = null): SectionView|RepeatableSectionView|null
     {
         try {
-            return $this->section($name);
+            return $this->section($name, $layout);
         } catch (\RuntimeException) {
             return null;
         }
@@ -61,13 +65,12 @@ final class UiManager
 
     private function buildSingleView(Section $definition): SectionView
     {
-        // Use the resolved page *name* (not FQCN) so that cache keys match
-        // the keys used by flushCache(), which receives the name from route params.
         $pageName = $this->resolvePageName($definition->getPage());
-        $cacheKey = $this->cacheKey($pageName, $definition->getName());
+        $layout   = $definition->getLayout();
+        $cacheKey = $this->cacheKey($pageName, $definition->getName(), $layout);
 
-        $data = $this->cached($cacheKey, function () use ($definition, $pageName): array {
-            $record = UiContent::findSection($pageName, $definition->getName());
+        $data = $this->cached($cacheKey, function () use ($definition, $pageName, $layout): array {
+            $record = UiContent::findSection($pageName, $definition->getName(), $layout);
 
             return $record ? ($record->fields ?? []) : [];
         });
@@ -80,13 +83,12 @@ final class UiManager
     private function buildRepeatableView(Section $definition): RepeatableSectionView
     {
         $pageName = $this->resolvePageName($definition->getPage());
-        $cacheKey = $this->cacheKey($pageName, $definition->getName(), 'repeatable');
+        $layout   = $definition->getLayout();
+        $cacheKey = $this->cacheKey($pageName, $definition->getName(), $layout, 'repeatable');
 
-        $rows = $this->cached($cacheKey, function () use ($definition, $pageName): array {
-            $dbRows = UiContent::findRepeatableItems($pageName, $definition->getName())
+        $rows = $this->cached($cacheKey, function () use ($definition, $pageName, $layout): array {
+            return UiContent::findRepeatableItems($pageName, $definition->getName(), $layout)
                 ->map(fn (UiContent $c) => $c->fields ?? [])->all();
-
-            return $dbRows !== [] ? $dbRows : $definition->default();
         });
 
         return new RepeatableSectionView($definition, $rows);
@@ -110,11 +112,11 @@ final class UiManager
         return $pageClass;
     }
 
-    private function cacheKey(string $page, string $section, string $suffix = ''): string
+    private function cacheKey(string $page, string $section, string $layout = '', string $suffix = ''): string
     {
         $prefix = config('ui-manager.cache.prefix', 'ui_manager_');
 
-        return $prefix . md5("{$page}_{$section}_{$suffix}");
+        return $prefix . md5("{$page}_{$section}_{$layout}_{$suffix}");
     }
 
     /** @template T @param Closure(): T $callback @return T */
@@ -127,10 +129,10 @@ final class UiManager
         return Cache::remember($key, (int) config('ui-manager.cache.ttl', 3600), $callback);
     }
 
-    public function flushCache(string $page, string $section): void
+    public function flushCache(string $page, string $section, string $layout = ''): void
     {
-        Cache::forget($this->cacheKey($page, $section));
-        Cache::forget($this->cacheKey($page, $section, 'repeatable'));
+        Cache::forget($this->cacheKey($page, $section, $layout));
+        Cache::forget($this->cacheKey($page, $section, $layout, 'repeatable'));
     }
 
     public function flushAllCache(): void

@@ -7,16 +7,44 @@
         <span v-if="isRequired" class="text-destructive ml-0.5">*</span>
       </label>
 
-      <!-- Variable copy button -->
+      <!-- Variable copy: single format -->
       <button
+        v-if="variableFormats.length === 1"
         type="button"
-        @click="copyVariable"
+        @click="copyFormat(variableFormats[0])"
         class="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-        :title="`Copy variable: %${sectionName}.${field.name}%`"
+        :title="`Copy: ${variableFormats[0]}`"
       >
         <CopyIcon class="w-3 h-3" />
-        <code class="font-mono">%{{ sectionName }}.{{ field.name }}%</code>
+        <code class="font-mono">{{ variableFormats[0] }}</code>
       </button>
+
+      <!-- Variable copy: multiple formats — dropdown -->
+      <div v-else-if="variableFormats.length > 1" class="relative" ref="dropdownRef">
+        <button
+          type="button"
+          @click="showDropdown = !showDropdown"
+          class="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+        >
+          <CopyIcon class="w-3 h-3" />
+          <span>Variables</span>
+          <ChevronDownIcon class="w-3 h-3" />
+        </button>
+        <div
+          v-if="showDropdown"
+          class="absolute right-0 top-full mt-1 bg-popover border rounded-md shadow-lg z-50 py-1 min-w-max"
+        >
+          <button
+            v-for="fmt in variableFormats"
+            :key="fmt"
+            type="button"
+            @click="copyFormat(fmt); showDropdown = false"
+            class="w-full px-3 py-1.5 text-left text-xs font-mono hover:bg-muted transition-colors"
+          >
+            {{ fmt }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Translatable field: render locale tabs + input per locale -->
@@ -62,12 +90,18 @@
 
     <!-- Help text -->
     <p v-if="field.help" class="text-xs text-muted-foreground">{{ field.help }}</p>
+
+    <!-- Validation error -->
+    <p v-if="error" role="alert" class="text-xs text-destructive flex items-center gap-1 mt-0.5">
+      <AlertCircleIcon class="w-3 h-3 shrink-0" />
+      {{ error }}
+    </p>
   </div>
 </template>
 
 <script setup>
-import { computed, inject, ref } from 'vue'
-import { CopyIcon } from 'lucide-vue-next'
+import { computed, inject, ref, onMounted, onUnmounted } from 'vue'
+import { CopyIcon, AlertCircleIcon, ChevronDownIcon } from 'lucide-vue-next'
 import { useLocales } from '../../composables/useConfig.js'
 import TextFieldComponent from './TextFieldComponent.vue'
 import TextareaFieldComponent from './TextareaFieldComponent.vue'
@@ -84,8 +118,9 @@ import UrlFieldComponent from './UrlFieldComponent.vue'
 import PriceFieldComponent from './PriceFieldComponent.vue'
 
 const props = defineProps({
-  field: Object,
+  field:      Object,
   modelValue: { default: null },
+  error:      { type: String, default: null },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -96,6 +131,21 @@ const activeLocale = ref(defaultLocale)
 const sectionName = inject('sectionName', 'section')
 const fieldId = computed(() => `field-${sectionName}-${props.field.name}`)
 const isRequired = computed(() => props.field.rules?.includes('required'))
+
+const variableFormats = computed(() => props.field.variable_formats ?? [])
+
+// Dropdown state
+const showDropdown = ref(false)
+const dropdownRef = ref(null)
+
+function handleOutsideClick(e) {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
+    showDropdown.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleOutsideClick, true))
+onUnmounted(() => document.removeEventListener('click', handleOutsideClick, true))
 
 // Current locale value from the locale-keyed object stored in modelValue.
 const localeValue = computed(() => {
@@ -131,8 +181,7 @@ const fieldComponent = computed(() => {
   }
 })
 
-function copyVariable() {
-  const variable = `%${sectionName}.${props.field.name}%`
-  navigator.clipboard.writeText(variable).catch(() => {})
+function copyFormat(fmt) {
+  navigator.clipboard.writeText(fmt).catch(() => {})
 }
 </script>

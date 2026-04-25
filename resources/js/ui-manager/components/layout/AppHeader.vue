@@ -18,19 +18,33 @@
     </nav>
 
     <div class="ml-auto flex items-center gap-2">
-      <!-- Toast area placeholder -->
+      <!-- Variable browser toggle -->
+      <button
+        type="button"
+        @click="varBrowserOpen = true"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+        title="Browse available variables"
+      >
+        <CodeIcon class="w-3.5 h-3.5" />
+        Variables
+      </button>
     </div>
   </header>
+
+  <VariableBrowser :open="varBrowserOpen" @close="varBrowserOpen = false" />
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChevronRightIcon } from 'lucide-vue-next'
+import { ChevronRightIcon, CodeIcon } from 'lucide-vue-next'
 import { useUiStore } from '../../stores/ui.js'
+import VariableBrowser from './VariableBrowser.vue'
 
 const route = useRoute()
 const store = useUiStore()
+
+const varBrowserOpen = ref(false)
 
 const breadcrumbs = computed(() => {
   const crumbs = []

@@ -138,8 +138,6 @@ final class MakeUiSectionCommand extends Command
 
         class {$class} extends Section{$repeatableImpl}
         {
-            protected string \$layout = '{$layout}';
-
             protected string \$name = '{$name}';
 
             protected string \$page = {$this->shortClass($pageClass)}::class;
@@ -148,14 +146,6 @@ final class MakeUiSectionCommand extends Command
             {
                 return [
                     Field::text('title')->rules(['required', 'string', 'max:255']),
-                    // TODO: add more fields
-                ];
-            }
-
-            public function default(): array
-            {
-                return [
-                    'title' => '{$displayName}',
                 ];
             }
         }

@@ -43,6 +43,13 @@ class ImageField extends BaseField
         return 'image';
     }
 
+    public function getVariableFormats(string $sectionName): array
+    {
+        $key = "{$sectionName}.{$this->getName()}";
+
+        return ["%{$key}:url%", "%{$key}:name%"];
+    }
+
     public function toArray(): array
     {
         return array_merge(parent::toArray(), array_filter([

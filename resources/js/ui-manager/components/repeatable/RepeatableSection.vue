@@ -1,69 +1,82 @@
 <template>
   <div>
     <!-- Items list -->
-    <div v-if="items.length" class="space-y-3 mb-4">
-      <div
-        v-for="(item, idx) in items"
-        :key="itemKey(item, idx)"
-        draggable="true"
-        @dragstart="onDragStart(idx, $event)"
-        @dragover.prevent="onDragOver(idx)"
-        @dragend="onDragEnd"
-        :class="[
-          'rounded-xl border bg-card overflow-hidden transition-opacity',
-          dragIndex === idx ? 'opacity-40' : 'opacity-100',
-        ]"
-      >
-        <div class="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b">
-          <GripVerticalIcon class="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
-          <span class="text-sm font-medium flex-1 truncate">
-            {{ itemLabel(item, idx) }}
-          </span>
-          <span
-            v-if="item.id === null"
-            class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0"
-          >default</span>
-          <button
-            type="button"
-            @click="toggleExpand(itemKey(item, idx))"
-            class="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            <ChevronDownIcon
-              class="w-4 h-4 transition-transform duration-150"
-              :class="{ 'rotate-180': expanded.has(itemKey(item, idx)) }"
-            />
-          </button>
-          <button
-            v-if="item.id !== null"
-            type="button"
-            @click="deleteItem(item, idx)"
-            class="text-muted-foreground hover:text-destructive transition-colors shrink-0"
-          >
-            <Trash2Icon class="w-4 h-4" />
-          </button>
-        </div>
+    <div v-if="items.length" class="space-y-1 mb-4">
+      <template v-for="(item, idx) in items" :key="itemKey(item, idx)">
+        <!-- Drop insertion line ABOVE the item being dragged over -->
+        <div
+          v-if="dropTargetIdx === idx && dragIndex !== null && dragIndex !== idx"
+          class="h-0.5 rounded bg-primary/60 mx-2 my-1 transition-all"
+        />
 
-        <Transition name="slide">
-          <div v-if="expanded.has(itemKey(item, idx))" class="p-4">
-            <RepeatableItemForm
-              :definition="definition"
-              :item="item"
-              :page="page"
-              :section="section"
-              @saved="onItemSaved(idx, $event)"
-            />
+        <div
+          draggable="true"
+          @dragstart="onDragStart(idx, $event)"
+          @dragover.prevent="onDragOver(idx)"
+          @dragleave="onDragLeave"
+          @dragend="onDragEnd"
+          :class="[
+            'rounded-xl border bg-card overflow-hidden transition-all duration-150',
+            dragIndex === idx ? 'opacity-40 scale-[0.98]' : 'opacity-100',
+          ]"
+        >
+          <div class="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b">
+            <GripVerticalIcon class="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+            <span class="text-sm font-medium flex-1 truncate">
+              {{ itemLabel(item, idx) }}
+            </span>
+            <span
+              v-if="item.id === null"
+              class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0"
+            >default</span>
+            <button
+              type="button"
+              @click="toggleExpand(itemKey(item, idx))"
+              class="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              :aria-expanded="expanded.has(itemKey(item, idx))"
+              :aria-label="expanded.has(itemKey(item, idx)) ? 'Collapse' : 'Expand'"
+            >
+              <ChevronDownIcon
+                class="w-4 h-4 transition-transform duration-150"
+                :class="{ 'rotate-180': expanded.has(itemKey(item, idx)) }"
+              />
+            </button>
+            <button
+              v-if="item.id !== null"
+              type="button"
+              @click="deleteItem(item, idx)"
+              class="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+              aria-label="Delete item"
+            >
+              <Trash2Icon class="w-4 h-4" />
+            </button>
           </div>
-        </Transition>
-      </div>
+
+          <Transition name="slide">
+            <div v-if="expanded.has(itemKey(item, idx))" class="p-4">
+              <RepeatableItemForm
+                :definition="definition"
+                :item="item"
+                :page="page"
+                :section="section"
+                @saved="onItemSaved(idx, $event)"
+              />
+            </div>
+          </Transition>
+        </div>
+      </template>
+
+      <!-- Drop insertion line at the END of the list -->
+      <div
+        v-if="dropTargetIdx === items.length && dragIndex !== null"
+        class="h-0.5 rounded bg-primary/60 mx-2 my-1 transition-all"
+      />
     </div>
 
     <div v-else class="rounded-xl border border-dashed p-8 text-center text-muted-foreground mb-4">
       <ListIcon class="w-6 h-6 mx-auto mb-2 opacity-40" />
       <p class="text-sm">No items yet — add your first one below.</p>
     </div>
-
-    <!-- Reorder error -->
-    <p v-if="reorderError" class="text-sm text-destructive mb-3">{{ reorderError }}</p>
 
     <!-- Add new item -->
     <button
@@ -98,23 +111,25 @@ import {
   PlusIcon, ListIcon,
 } from 'lucide-vue-next'
 import { useUiStore } from '../../stores/ui.js'
+import { useToast } from '../../composables/useToast.js'
 import RepeatableItemForm from './RepeatableItemForm.vue'
 
 const props = defineProps({
-  page: String,
-  section: String,
+  page:       String,
+  section:    String,
   definition: Object,
 })
 
-const store = useUiStore()
-const items = ref([])
-const expanded = reactive(new Set())
+const store     = useUiStore()
+const { toast } = useToast()
+const items     = ref([])
+const expanded  = reactive(new Set())
 const showAddForm = ref(false)
-const loading = ref(false)
+const loading   = ref(false)
 
 // Drag-and-drop state
-const dragIndex = ref(null)
-const reorderError = ref(null)
+const dragIndex     = ref(null)
+const dropTargetIdx = ref(null)
 
 onMounted(async () => {
   loading.value = true
@@ -122,7 +137,6 @@ onMounted(async () => {
     const data = await store.fetchSection(props.page, props.section)
     items.value = data.items ?? []
 
-    // Auto-expand default (unsaved) items so they're immediately editable
     items.value.forEach((item, idx) => {
       if (item.id === null) expanded.add(itemKey(item, idx))
     })
@@ -150,8 +164,13 @@ function toggleExpand(key) {
 
 async function deleteItem(item, idx) {
   if (!confirm('Delete this item?')) return
-  await store.deleteItem(props.page, props.section, item.id)
-  items.value.splice(idx, 1)
+  try {
+    await store.deleteItem(props.page, props.section, item.id)
+    items.value.splice(idx, 1)
+    toast({ title: 'Item deleted', variant: 'success' })
+  } catch (e) {
+    toast({ title: 'Delete failed', description: e.message, variant: 'error' })
+  }
 }
 
 function onItemSaved(idx, updated) {
@@ -170,33 +189,42 @@ function onNewItemSaved(newItem) {
 // ------------------------------------------------------------------ drag & drop
 
 function onDragStart(idx, e) {
-  dragIndex.value = idx
+  dragIndex.value     = idx
+  dropTargetIdx.value = idx
   e.dataTransfer.effectAllowed = 'move'
 }
 
 function onDragOver(targetIdx) {
-  if (dragIndex.value === null || dragIndex.value === targetIdx) return
-  // Reorder in-place so the visual moves as you drag
-  const arr = [...items.value]
-  const [moved] = arr.splice(dragIndex.value, 1)
-  arr.splice(targetIdx, 0, moved)
-  items.value = arr
-  dragIndex.value = targetIdx
+  if (dragIndex.value === null) return
+  dropTargetIdx.value = targetIdx
+}
+
+function onDragLeave() {
+  // Keep the last known target — avoids flickering on child element boundaries
 }
 
 async function onDragEnd() {
-  dragIndex.value = null
-  reorderError.value = null
+  const from   = dragIndex.value
+  const to     = dropTargetIdx.value
 
-  // Only persist items that have a real DB id (unsaved defaults are excluded)
+  dragIndex.value     = null
+  dropTargetIdx.value = null
+
+  if (from === null || to === null || from === to) return
+
+  // Move item in the local array
+  const arr = [...items.value]
+  const [moved] = arr.splice(from, 1)
+  arr.splice(to > from ? to - 1 : to, 0, moved)
+  items.value = arr
+
   const ids = items.value.filter(i => i.id !== null).map(i => i.id)
-  if (ids.length < 2) return  // nothing to reorder
+  if (ids.length < 2) return
 
   try {
     await store.reorderItems(props.page, props.section, ids)
   } catch (err) {
-    // Surface the error so the user knows the save failed
-    reorderError.value = 'Reorder failed — please try again.'
+    toast({ title: 'Reorder failed', description: 'Please try again.', variant: 'error' })
     console.error('[ui-manager] reorderItems failed:', err)
   }
 }

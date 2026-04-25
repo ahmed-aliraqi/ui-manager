@@ -14,6 +14,13 @@ class DateRangeField extends BaseField
         return 'date_range';
     }
 
+    public function getVariableFormats(string $sectionName): array
+    {
+        $key = "{$sectionName}.{$this->getName()}";
+
+        return ["%{$key}:start%", "%{$key}:end%"];
+    }
+
     /**
      * Convenience: set default as a [start, end] pair.
      *

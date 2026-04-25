@@ -151,6 +151,51 @@ final class TranslatableFieldTest extends TestCase
         $this->assertSame('Hello', $view->field('title:en')->getString());
     }
 
+    // ---------------------------------------------------------- Locale-keyed defaults
+
+    public function test_translatable_field_accepts_locale_keyed_default(): void
+    {
+        $field = Field::text('title')->translatable()->default(['en' => 'Title', 'ar' => 'العنوان']);
+
+        $this->assertSame(['en' => 'Title', 'ar' => 'العنوان'], $field->getDefault());
+    }
+
+    public function test_translatable_locale_default_included_in_to_array(): void
+    {
+        $field = Field::text('title')->translatable()->default(['en' => 'Title', 'ar' => 'العنوان']);
+
+        $this->assertSame(['en' => 'Title', 'ar' => 'العنوان'], $field->toArray()['default']);
+    }
+
+    public function test_translatable_locale_default_resolves_correct_locale(): void
+    {
+        app()->setLocale('ar');
+
+        $field = Field::text('title')->translatable();
+        $value = new FieldValueData('title', ['en' => 'Title', 'ar' => 'العنوان'], $field);
+
+        $this->assertSame('العنوان', $value->getString());
+    }
+
+    public function test_section_resolves_translatable_locale_default_via_resolve_defaults(): void
+    {
+        $section = new class extends \AhmedAliraqi\UiManager\Core\Section {
+            protected string $name = 'hero';
+            protected string $page = 'home';
+
+            public function fields(): array
+            {
+                return [
+                    Field::text('title')->translatable()->default(['en' => 'Title', 'ar' => 'العنوان']),
+                ];
+            }
+        };
+
+        $defaults = $section->resolveDefaults();
+
+        $this->assertSame(['en' => 'Title', 'ar' => 'العنوان'], $defaults['title']);
+    }
+
     // ---------------------------------------------------------- Non-translatable unchanged
 
     public function test_non_translatable_field_returns_value_as_is(): void

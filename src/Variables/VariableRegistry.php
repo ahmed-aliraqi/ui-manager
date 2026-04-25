@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AhmedAliraqi\UiManager\Variables;
 
 use AhmedAliraqi\UiManager\DTOs\FieldValueData;
+use Carbon\Carbon;
 use Closure;
 use InvalidArgumentException;
 
@@ -115,12 +116,26 @@ final class VariableRegistry
         }
 
         if (is_array($value)) {
-            return match ($modifier) {
-                'url'  => (string) ($value['url'] ?? ''),
-                'name' => (string) ($value['filename'] ?? ''),
-                'size' => (string) ($value['size'] ?? ''),
-                default => $value,
+            return match (true) {
+                $modifier === 'url'                                    => (string) ($value['url'] ?? ''),
+                $modifier === 'name'                                   => (string) ($value['filename'] ?? ''),
+                $modifier === 'size'                                   => (string) ($value['size'] ?? ''),
+                $modifier === 'start'                                  => (string) ($value['start'] ?? ''),
+                $modifier === 'end'                                    => (string) ($value['end'] ?? ''),
+                $modifier === 'amount'                                 => (string) ($value['amount'] ?? ''),
+                $modifier === 'currency'                               => (string) ($value['currency'] ?? ''),
+                str_starts_with($modifier, 'format(') && str_ends_with($modifier, ')') => $value,
+                default                                                => $value,
             };
+        }
+
+        if (is_string($value) && str_starts_with($modifier, 'format(') && str_ends_with($modifier, ')')) {
+            $format = substr($modifier, 7, -1);
+            try {
+                return Carbon::parse($value)->format($format);
+            } catch (\Throwable) {
+                return $value;
+            }
         }
 
         // String or scalar: return as-is (modifier not applicable)
@@ -132,11 +147,30 @@ final class VariableRegistry
      */
     private function applyModifierToField(FieldValueData $fieldValue, string $modifier): string
     {
+        $raw = $fieldValue->rawValue;
+
+        if (str_starts_with($modifier, 'format(') && str_ends_with($modifier, ')')) {
+            $format = substr($modifier, 7, -1);
+            $dateStr = is_string($raw) ? $raw : '';
+            if ($dateStr === '') {
+                return '';
+            }
+            try {
+                return Carbon::parse($dateStr)->format($format);
+            } catch (\Throwable) {
+                return $dateStr;
+            }
+        }
+
         return match ($modifier) {
-            'url'  => $fieldValue->getUrl(),
-            'name' => is_array($fieldValue->rawValue) ? (string) ($fieldValue->rawValue['filename'] ?? '') : '',
-            'size' => is_array($fieldValue->rawValue) ? (string) ($fieldValue->rawValue['size'] ?? '') : '',
-            default => $fieldValue->getString(),
+            'url'      => $fieldValue->getUrl(),
+            'name'     => is_array($raw) ? (string) ($raw['filename'] ?? '') : '',
+            'size'     => is_array($raw) ? (string) ($raw['size'] ?? '') : '',
+            'start'    => is_array($raw) ? (string) ($raw['start'] ?? '') : '',
+            'end'      => is_array($raw) ? (string) ($raw['end'] ?? '') : '',
+            'amount'   => is_array($raw) ? (string) ($raw['amount'] ?? '') : '',
+            'currency' => is_array($raw) ? (string) ($raw['currency'] ?? '') : '',
+            default    => $fieldValue->getString(),
         };
     }
 }

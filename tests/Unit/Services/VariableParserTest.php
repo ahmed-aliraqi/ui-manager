@@ -161,4 +161,71 @@ final class VariableParserTest extends TestCase
         $this->assertContains('header.logo:url', $keys);
         $this->assertContains('app.name', $keys);
     }
+
+    // ------------------------------------------------------------------ format() modifier
+
+    public function test_format_modifier_formats_date_string(): void
+    {
+        $this->registry->value('event.date', '2026-04-25');
+
+        $result = $this->parser->parse('%event.date:format(d/m/Y)%');
+
+        $this->assertSame('25/04/2026', $result);
+    }
+
+    public function test_format_modifier_with_time_formats_datetime_string(): void
+    {
+        $this->registry->value('event.starts_at', '2026-04-25 14:30:00');
+
+        $result = $this->parser->parse('%event.starts_at:format(Y-m-d H:i)%');
+
+        $this->assertSame('2026-04-25 14:30', $result);
+    }
+
+    public function test_extract_keys_includes_format_modifier(): void
+    {
+        $keys = $this->parser->extractKeys('%event.date:format(Y-m-d)%');
+
+        $this->assertContains('event.date:format(Y-m-d)', $keys);
+    }
+
+    // ------------------------------------------------------------------ start / end modifiers
+
+    public function test_start_modifier_returns_start_from_date_range_array(): void
+    {
+        $this->registry->value('promo.period', ['start' => '2026-01-01', 'end' => '2026-01-31']);
+
+        $result = $this->parser->parse('From %promo.period:start%');
+
+        $this->assertSame('From 2026-01-01', $result);
+    }
+
+    public function test_end_modifier_returns_end_from_date_range_array(): void
+    {
+        $this->registry->value('promo.period', ['start' => '2026-01-01', 'end' => '2026-01-31']);
+
+        $result = $this->parser->parse('Until %promo.period:end%');
+
+        $this->assertSame('Until 2026-01-31', $result);
+    }
+
+    // ------------------------------------------------------------------ amount / currency modifiers
+
+    public function test_currency_modifier_returns_currency_from_price_array(): void
+    {
+        $this->registry->value('product.price', ['amount' => 99.90, 'currency' => 'USD']);
+
+        $result = $this->parser->parse('Currency: %product.price:currency%');
+
+        $this->assertSame('Currency: USD', $result);
+    }
+
+    public function test_amount_modifier_returns_amount_from_price_array(): void
+    {
+        $this->registry->value('product.price', ['amount' => 99.90, 'currency' => 'USD']);
+
+        $result = $this->parser->parse('Price: %product.price:amount%');
+
+        $this->assertSame('Price: 99.9', $result);
+    }
 }

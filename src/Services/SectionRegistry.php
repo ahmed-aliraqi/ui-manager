@@ -16,7 +16,7 @@ final class SectionRegistry
 
     public function register(Section $section): void
     {
-        $this->sections[$this->key($section->getPage(), $section->getName())] = $section;
+        $this->sections[$this->key($section->getPage(), $section->getName(), $section->getLayout())] = $section;
     }
 
     /**
@@ -49,19 +49,22 @@ final class SectionRegistry
             ->all();
     }
 
-    public function find(string $pageClassOrName, string $sectionName): ?Section
+    public function find(string $pageClassOrName, string $sectionName, ?string $layout = null): ?Section
     {
         $this->autoDiscover();
 
-        // Direct key lookup (fast path when full class name is used)
-        $direct = $this->sections[$this->key($pageClassOrName, $sectionName)] ?? null;
-        if ($direct !== null) {
-            return $direct;
+        // Direct key lookup (fast path when full class name + layout are known)
+        if ($layout !== null) {
+            $direct = $this->sections[$this->key($pageClassOrName, $sectionName, $layout)] ?? null;
+            if ($direct !== null) {
+                return $direct;
+            }
         }
 
-        // Fallback: search by page name match
+        // Fallback: search by page name match (+ optional layout filter)
         foreach ($this->sections as $section) {
             if ($section->getName() === $sectionName
+                && ($layout === null || $section->getLayout() === $layout)
                 && $this->pageMatchesName($section->getPage(), $pageClassOrName)) {
                 return $section;
             }
@@ -96,15 +99,15 @@ final class SectionRegistry
     }
 
     /**
-     * Find a section by its short name across all pages.
-     * Useful when the page context is not known.
+     * Find a section by its short name across all pages, with an optional layout filter.
      */
-    public function findByName(string $sectionName): ?Section
+    public function findByName(string $sectionName, ?string $layout = null): ?Section
     {
         $this->autoDiscover();
 
         foreach ($this->sections as $section) {
-            if ($section->getName() === $sectionName) {
+            if ($section->getName() === $sectionName
+                && ($layout === null || $section->getLayout() === $layout)) {
                 return $section;
             }
         }
@@ -112,9 +115,9 @@ final class SectionRegistry
         return null;
     }
 
-    private function key(string $page, string $name): string
+    private function key(string $page, string $name, string $layout = 'default'): string
     {
-        return "{$page}::{$name}";
+        return "{$page}::{$name}::{$layout}";
     }
 
     private function autoDiscover(): void
@@ -130,7 +133,7 @@ final class SectionRegistry
 
         foreach (ClassDiscovery::discover($path, $namespace, Section::class) as $class) {
             $instance = new $class();
-            $key      = $this->key($instance->getPage(), $instance->getName());
+            $key      = $this->key($instance->getPage(), $instance->getName(), $instance->getLayout());
 
             if (! isset($this->sections[$key])) {
                 $this->sections[$key] = $instance;

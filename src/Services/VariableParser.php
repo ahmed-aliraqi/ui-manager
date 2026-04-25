@@ -34,8 +34,8 @@ final class VariableParser
         $start = config('ui-manager.variables.delimiter_start', '%');
         $end   = config('ui-manager.variables.delimiter_end', '%');
 
-        // Supports optional modifier suffix: %section.field:url% or %section.field:name%
-        $pattern = '/' . preg_quote($start, '/') . '([a-zA-Z0-9_.-]+(?::[a-zA-Z]+)?)' . preg_quote($end, '/') . '/';
+        // Supports optional modifier: %section.field:url% or %section.field:format(Y-m-d)%
+        $pattern = '/' . preg_quote($start, '/') . '([a-zA-Z0-9_.-]+(?::(?:[a-zA-Z]+(?:\([^)]*\))?))?)'  . preg_quote($end, '/') . '/';
 
         return preg_replace_callback($pattern, function (array $matches) use ($depth): string {
             $key   = $matches[1];
@@ -61,7 +61,7 @@ final class VariableParser
     {
         $start   = config('ui-manager.variables.delimiter_start', '%');
         $end     = config('ui-manager.variables.delimiter_end', '%');
-        $pattern = '/' . preg_quote($start, '/') . '([a-zA-Z0-9_.-]+(?::[a-zA-Z]+)?)' . preg_quote($end, '/') . '/';
+        $pattern = '/' . preg_quote($start, '/') . '([a-zA-Z0-9_.-]+(?::(?:[a-zA-Z]+(?:\([^)]*\))?))?)'  . preg_quote($end, '/') . '/';
 
         preg_match_all($pattern, $text, $matches);
 

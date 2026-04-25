@@ -136,6 +136,8 @@ foreach (ui()->section('faq') as $item) {
 ```bash
 php artisan make:ui-section ContactFormSection
 php artisan make:ui-page ContactPage
+php artisan make:ui-field RatingField         # creates app/Ui/Fields/RatingField.php
+php artisan make:ui-field RatingField --type=star_rating  # override the type slug
 ```
 
 ---
@@ -238,7 +240,21 @@ echo ui()->section('post')->field('status')->label();      // → "Published"
 
 ---
 
-## Adding a new Field type
+## Creating a custom Field type (host application)
+
+Use the Artisan generator to scaffold a custom field in the host application:
+
+```bash
+php artisan make:ui-field Rating
+# Creates app/Ui/Fields/RatingField.php extending BaseField
+# Type slug: "rating" (auto-derived from class name, or override with --type=)
+```
+
+Then complete the steps below.
+
+---
+
+## Adding a new Field type (inside the package)
 
 1. Create `src/Fields/ColorField.php`:
 
@@ -313,6 +329,29 @@ $registry->value('year', (string) now()->year);
 ```
 
 In any string field value: `%store.name%`, `%year%`.
+
+---
+
+## Reacting to section saves (SectionSaved event)
+
+Every mutating API operation fires a `SectionSaved` event. Listen to it in any service provider:
+
+```php
+use AhmedAliraqi\UiManager\Events\SectionSaved;
+use Illuminate\Support\Facades\Event;
+
+Event::listen(SectionSaved::class, function (SectionSaved $event) {
+    // $event->page    — page slug, e.g. "home"
+    // $event->section — section slug, e.g. "banner"
+    // $event->action  — SectionSaved::UPDATED | ITEM_CREATED | ITEM_UPDATED | ITEM_DELETED
+    // $event->itemId  — int|null (null for non-repeatable saves and deletes return the deleted ID)
+    // $event->fields  — array<string, mixed> (empty for deletes)
+
+    cache()->forget("some_derived_cache_{$event->section}");
+});
+```
+
+Actions: `SectionSaved::UPDATED`, `SectionSaved::ITEM_CREATED`, `SectionSaved::ITEM_UPDATED`, `SectionSaved::ITEM_DELETED`.
 
 ---
 

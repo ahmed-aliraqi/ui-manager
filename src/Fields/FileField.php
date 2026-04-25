@@ -40,6 +40,13 @@ class FileField extends BaseField
         return 'file';
     }
 
+    public function getVariableFormats(string $sectionName): array
+    {
+        $key = "{$sectionName}.{$this->getName()}";
+
+        return ["%{$key}:url%", "%{$key}:name%", "%{$key}:size%"];
+    }
+
     public function toArray(): array
     {
         return array_merge(parent::toArray(), [

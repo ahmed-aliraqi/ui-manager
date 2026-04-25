@@ -4,10 +4,11 @@
 
 ```
 src/
-├── Console/          MakeUiPageCommand, MakeUiSectionCommand
+├── Console/          InstallCommand, MakeUiFieldCommand, MakeUiPageCommand, MakeUiSectionCommand
 ├── Contracts/        HasFields, Repeatable (marker), Renderable
 ├── Core/             Page (abstract), Section (abstract)
 ├── DTOs/             FieldValueData, SectionData
+├── Events/           SectionSaved
 ├── Exceptions/       UiManagerException
 ├── Facades/          Ui (points to UiManager)
 ├── Fields/           BaseField, Field (factory), TextField, TextareaField,
@@ -181,3 +182,28 @@ All services are singletons bound in `UiManagerServiceProvider::register()`:
 | `UiManager` | Singleton, injected with SectionRegistry + PageRegistry |
 
 API routes are registered **before** the SPA web catch-all in `registerRoutes()` — order matters because Laravel matches routes in registration order.
+
+## Events
+
+`SectionSaved` is fired via `Illuminate\Support\Facades\Event::dispatch()` after every mutating API operation:
+
+| Action constant | Trigger |
+|---|---|
+| `SectionSaved::UPDATED` | `SectionController::update()` |
+| `SectionSaved::ITEM_CREATED` | `SectionController::storeItem()` |
+| `SectionSaved::ITEM_UPDATED` | `SectionController::updateItem()` |
+| `SectionSaved::ITEM_DELETED` | `SectionController::destroyItem()` |
+
+The event carries `$page`, `$section`, `$action`, `$itemId` (null for non-repeatable saves), and `$fields` (empty array for delete). Host applications can listen to this event in a service provider or an event listener.
+
+```php
+use AhmedAliraqi\UiManager\Events\SectionSaved;
+
+Event::listen(SectionSaved::class, function (SectionSaved $event) {
+    // Invalidate a CDN, send a webhook, log an audit entry, etc.
+});
+```
+
+## Bulk reorder validation
+
+`SectionController::reorder()` fetches all valid `sort_order IS NOT NULL` IDs for the given page + section before applying the new order. Any submitted ID not in that set causes an immediate **422** response with `{ message, invalid: [id, ...] }`. This prevents a malicious or stale client from overwriting another section's row positions.

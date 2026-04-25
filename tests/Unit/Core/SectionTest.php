@@ -12,7 +12,7 @@ use AhmedAliraqi\UiManager\Tests\TestCase;
 
 final class SectionTest extends TestCase
 {
-    public function test_section_resolves_defaults_from_fields_and_default_method(): void
+    public function test_section_resolves_defaults_from_fields(): void
     {
         $section = new class extends Section {
             protected string $name    = 'banner';
@@ -26,16 +26,11 @@ final class SectionTest extends TestCase
                     Field::text('subtitle')->default('Subtitle Default'),
                 ];
             }
-
-            public function default(): array
-            {
-                return ['title' => 'Method Default'];  // overrides field default
-            }
         };
 
         $defaults = $section->resolveDefaults();
 
-        $this->assertSame('Method Default', $defaults['title']); // method wins
+        $this->assertSame('Field Default', $defaults['title']);
         $this->assertSame('Subtitle Default', $defaults['subtitle']);
     }
 

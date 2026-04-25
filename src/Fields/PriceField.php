@@ -57,6 +57,13 @@ class PriceField extends BaseField
         return 'price';
     }
 
+    public function getVariableFormats(string $sectionName): array
+    {
+        $key = "{$sectionName}.{$this->getName()}";
+
+        return ["%{$key}%", "%{$key}:currency%"];
+    }
+
     public function toArray(): array
     {
         return array_merge(parent::toArray(), array_filter([

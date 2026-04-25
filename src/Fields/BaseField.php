@@ -22,6 +22,8 @@ abstract class BaseField
 
     protected bool $translatable = false;
 
+    protected bool $hasVariable = false;
+
     final public function __construct(string $name)
     {
         $this->name = $name;
@@ -100,6 +102,32 @@ abstract class BaseField
     public function isTranslatable(): bool
     {
         return $this->translatable;
+    }
+
+    /**
+     * Enable the variable picker UI for this field in the dashboard.
+     */
+    public function hasVariable(): static
+    {
+        $this->hasVariable = true;
+
+        return $this;
+    }
+
+    public function isVariableEnabled(): bool
+    {
+        return $this->hasVariable;
+    }
+
+    /**
+     * Return the list of variable placeholder strings available for this field.
+     * Subclasses override this to provide type-specific formats.
+     *
+     * @return array<string>
+     */
+    public function getVariableFormats(string $sectionName): array
+    {
+        return ["%{$sectionName}.{$this->name}%"];
     }
 
     public function getName(): string

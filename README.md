@@ -1,6 +1,14 @@
 # UI Manager — Laravel Package
 
-A production-ready, class-driven UI management system for Laravel. Define your UI structure in PHP, manage content from a modern SPA dashboard, and render it in Blade with a clean API.
+A production-ready, class-driven UI management system for Laravel. Define your UI structure in PHP, manage content from a modern SPA dashboard, and render it in Blade with a clean read-only API.
+
+---
+
+## Requirements
+
+- PHP 8.2+
+- Laravel 11+
+- [Spatie Media Library v11](https://spatie.be/docs/laravel-medialibrary) (bundled migration included — no separate install needed)
 
 ---
 
@@ -11,13 +19,16 @@ A production-ready, class-driven UI management system for Laravel. Define your U
 3. [Creating Pages](#creating-pages)
 4. [Creating Sections](#creating-sections)
 5. [Field Types](#field-types)
-6. [Repeatable Sections](#repeatable-sections)
-7. [Variables System](#variables-system)
-8. [Blade Usage](#blade-usage)
-9. [Dashboard](#dashboard)
-10. [Artisan Commands](#artisan-commands)
-11. [Extending the Package](#extending-the-package)
-12. [Testing](#testing)
+6. [Field Validation](#field-validation)
+7. [Repeatable Sections](#repeatable-sections)
+8. [Multi-language / Translatable Fields](#multi-language--translatable-fields)
+9. [Variables System](#variables-system)
+10. [Blade Usage](#blade-usage)
+11. [Dashboard](#dashboard)
+12. [Artisan Commands](#artisan-commands)
+13. [Extending the Package](#extending-the-package)
+14. [Testing](#testing)
+15. [Architecture Overview](#architecture-overview)
 
 ---
 
@@ -31,30 +42,52 @@ composer require ahmed-aliraqi/ui-manager
 php artisan ui-manager:install
 ```
 
+This single command publishes the config, copies the pre-built dashboard assets to `public/vendor/ui-manager/`, and runs the package migrations (including Spatie Media Library's `media` table).
+
+Use `--force` to overwrite previously published files:
+
+```bash
+php artisan ui-manager:install --force
+```
+
+### Manual publishing (optional)
+
+```bash
+php artisan vendor:publish --tag=ui-manager-config      # config/ui-manager.php
+php artisan vendor:publish --tag=ui-manager-assets      # public/vendor/ui-manager/
+php artisan vendor:publish --tag=ui-manager-migrations  # customise migrations
+```
+
+---
+
 ## Configuration
 
-`config/ui-manager.php`:
+After installation, `config/ui-manager.php` is available in your application:
 
 ```php
 return [
-    'layout' => 'default',
+
+    // Locales the dashboard renders input tabs for.
+    'locales'        => ['en'],
+    'default_locale' => 'en',
 
     'dashboard' => [
-        'title' => 'UI Manager',
+        'title'       => 'UI Manager',
         'home_button' => [
-            'display' => true,
+            'display' => false,
             'uri'     => '/dashboard',
-            'label'   => 'Back to Dashboard',
+            'label'   => 'Home',
         ],
     ],
 
     'routes' => [
-        'prefix'         => 'ui-manager',
-        'middleware'     => ['web', 'auth'],
+        'prefix'         => 'ui-manager',           // dashboard at /ui-manager
+        'middleware'     => ['web'],
         'api_prefix'     => 'ui-manager/api',
-        'api_middleware' => ['web', 'auth'],
+        'api_middleware' => ['web'],
     ],
 
+    // Paths scanned at boot for Page and Section classes.
     'discovery' => [
         'pages_path'         => 'app/Ui/Pages',
         'sections_path'      => 'app/Ui/Sections',
@@ -68,21 +101,38 @@ return [
         'max_depth'       => 10,
     ],
 
+    'media' => [
+        'disk' => 'public',
+    ],
+
     'cache' => [
-        'enabled' => true,
-        'ttl'     => 3600,
+        'enabled' => env('UI_MANAGER_CACHE', true),
+        'ttl'     => 3600,      // seconds
+        'prefix'  => 'ui_manager_',
     ],
 ];
+```
+
+### Protecting the dashboard
+
+Add your auth middleware to the routes keys:
+
+```php
+'routes' => [
+    'middleware'     => ['web', 'auth'],
+    'api_middleware' => ['web', 'auth'],
+],
 ```
 
 ---
 
 ## Creating Pages
 
-Pages represent top-level sections of your application (e.g. Home, About, Contact).
+Pages are top-level groupings (e.g. Home, About, Contact) shown as sidebar items.
 
 ```bash
 php artisan make:ui-page About
+php artisan make:ui-page Marketing/Landing  # sub-namespace
 ```
 
 Or manually:
@@ -95,7 +145,8 @@ use AhmedAliraqi\UiManager\Core\Page;
 
 class About extends Page
 {
-    protected string $name = 'about';
+    protected string $name  = 'about';
+    protected int    $order = 2;
 
     public function getDisplayName(): string
     {
@@ -104,22 +155,21 @@ class About extends Page
 }
 ```
 
-**Page properties:**
-
-| Property   | Type   | Description                              |
-|-----------|--------|------------------------------------------|
-| `$name`   | string | Unique slug identifier                   |
-| `$visible`| bool   | Show in dashboard sidebar (default: true)|
-| `$order`  | int    | Sort order in sidebar (default: 0)       |
+| Property   | Type   | Default | Description                          |
+|------------|--------|---------|--------------------------------------|
+| `$name`    | string | —       | Unique slug used in routes and cache |
+| `$visible` | bool   | `true`  | Show in the dashboard sidebar        |
+| `$order`   | int    | `0`     | Sidebar sort position                |
 
 ---
 
 ## Creating Sections
 
-Sections belong to a page and contain fields.
+Sections belong to a page and hold a typed set of fields.
 
 ```bash
 php artisan make:ui-section Banner --page="App\Ui\Pages\Home"
+php artisan make:ui-section SocialLinks --page="App\Ui\Pages\Home" --repeatable
 ```
 
 Or manually:
@@ -141,48 +191,137 @@ class Banner extends Section
     public function fields(): array
     {
         return [
-            Field::text('title')->rules(['required', 'string', 'max:255']),
+            Field::text('title')
+                ->default('Welcome to our site')
+                ->rules(['required', 'string', 'max:255']),
             Field::editor('description'),
             Field::image('background'),
-        ];
-    }
-
-    public function default(): array
-    {
-        return [
-            'title'       => 'Welcome to our site',
-            'description' => '',
         ];
     }
 }
 ```
 
-**Section properties:**
+> **Field defaults** are defined per-field with `->default()`. There is no section-level `default()` method — all defaults live on the field itself.
 
-| Property   | Type   | Description                              |
-|-----------|--------|------------------------------------------|
-| `$name`   | string | Unique slug within the page              |
-| `$layout` | string | Layout name (default: "default")         |
-| `$page`   | string | Fully-qualified Page class name          |
-| `$visible`| bool   | Show in dashboard (default: true)        |
-| `$order`  | int    | Sort order within page tabs (default: 0) |
-| `$label`  | string | Override display label                   |
+| Property   | Type   | Default     | Description                            |
+|------------|--------|-------------|----------------------------------------|
+| `$name`    | string | —           | Unique slug within the page            |
+| `$page`    | string | —           | Fully-qualified Page class or slug     |
+| `$layout`  | string | `'default'` | Layout name                            |
+| `$visible` | bool   | `true`       | Show in the dashboard                 |
+| `$order`   | int    | `0`          | Sort position in page tabs            |
+| `$label`   | string | `''`         | Override the auto-generated tab label |
+
+### Multiple layouts for the same section name
+
+Give two sections the same `$name` but different `$layout` values — they are stored as separate DB records and cached independently:
+
+```php
+// app/Ui/Sections/HeroHomepage.php
+class HeroHomepage extends Section
+{
+    protected string $name   = 'hero';
+    protected string $layout = 'homepage';
+    protected string $page   = Home::class;
+
+    public function fields(): array
+    {
+        return [Field::text('title')->default('Welcome home')];
+    }
+}
+
+// app/Ui/Sections/HeroLanding.php
+class HeroLanding extends Section
+{
+    protected string $name   = 'hero';
+    protected string $layout = 'landing';
+    protected string $page   = Home::class;
+
+    public function fields(): array
+    {
+        return [Field::text('title')->default('Special offer')];
+    }
+}
+```
+
+**Blade — select variant by layout:**
+
+```php
+ui('hero', layout: 'homepage')->field('title')   // → homepage variant
+ui('hero', layout: 'landing')->field('title')    // → landing variant
+ui()->section('hero', 'homepage')->field('title') // equivalent long-form
+```
+
+Without a layout argument, the first registered variant is returned (same as before for single-layout sections).
+
+**API — pass `?layout=` query param:**
+
+The dashboard and API calls accept an optional `?layout=` query param to target a specific variant:
+
+```
+GET  /ui-manager/api/pages/home/sections/hero?layout=homepage
+PUT  /ui-manager/api/pages/home/sections/hero?layout=landing
+POST /ui-manager/api/pages/home/sections/hero/items?layout=homepage
+```
+
+**Cache invalidation:**
+
+```php
+app(UiManager::class)->flushCache('home', 'hero', 'homepage'); // flush one variant
+app(UiManager::class)->flushCache('home', 'hero', 'landing');  // flush the other
+```
+
+---
+
+### Registering sections outside `app/Ui/`
+
+Auto-discovery scans `app/Ui/Pages` and `app/Ui/Sections` by default. To register classes from any other location, call the registries in a service provider:
+
+```php
+use AhmedAliraqi\UiManager\Services\PageRegistry;
+use AhmedAliraqi\UiManager\Services\SectionRegistry;
+
+public function boot(PageRegistry $pages, SectionRegistry $sections): void
+{
+    $pages->registerClass(\App\Modules\Blog\Pages\BlogPage::class);
+    $sections->registerClass(\App\Modules\Blog\Sections\PostListSection::class);
+}
+```
 
 ---
 
 ## Field Types
 
-All fields are created via the `Field` factory and support a fluent builder API.
+All fields are created via the `Field` factory with a fluent builder API.
+
+### Common builder methods (all types)
+
+```php
+Field::text('name')
+    ->label('Display Label')          // defaults to humanised field name
+    ->help('Shown below the input')
+    ->rules(['required', 'string'])
+    ->required()      // prepends 'required' to the rules array
+    ->nullable()      // appends 'nullable' to the rules array
+    ->default($value)
+    ->translatable()  // enable multi-locale input (see below)
+    ->hasVariable()   // show variable picker in the dashboard (see Variables)
+```
+
+---
 
 ### Text
 
 ```php
 Field::text('title')
     ->label('Page Title')
-    ->rules(['required', 'string', 'max:255'])
     ->default('My Title')
-    ->help('The main heading of the page')
+    ->rules(['required', 'string', 'max:255'])
 ```
+
+**Stored as:** plain string.
+
+---
 
 ### Textarea
 
@@ -191,12 +330,19 @@ Field::textarea('excerpt')
     ->rules(['nullable', 'string', 'max:500'])
 ```
 
+**Stored as:** plain string (multi-line).
+
+---
+
 ### Rich Editor
 
 ```php
 Field::editor('body')
-    ->extensions(['bold', 'italic', 'link', 'bulletList'])
 ```
+
+**Stored as:** HTML string. Render unescaped: `{!! ui('section')->field('body') !!}`.
+
+---
 
 ### Select
 
@@ -209,124 +355,191 @@ Field::select('status')
     ])
     ->default('draft')
 
-// Multiple selection:
+// Multiple selection + search:
 Field::select('tags')
-    ->options([...])
+    ->options(['php' => 'PHP', 'js' => 'JavaScript'])
     ->multiple()
     ->searchable()
 ```
+
+**Stored as:** option key string (or array of keys when `->multiple()`).
+
+**Access the human label in Blade:**
+
+```php
+$field = ui()->section('post')->field('status');
+echo $field->getString();  // "published"  (the stored key)
+echo $field->label();      // "Published"  (the human label)
+```
+
+Use `->returnLabel()` on the field definition to make `getString()` return the label automatically.
+
+---
 
 ### Image
 
 ```php
 Field::image('hero')
     ->accept(['image/jpeg', 'image/png', 'image/webp'])
-    ->maxSize(2048)           // KB
-    ->dimensions(1920, 1080)  // optional recommended dimensions
+    ->maxSize(2048)            // KB
+    ->dimensions(1920, 1080)   // recommended width × height (informational)
+    ->default('https://example.com/placeholder.jpg')  // URL default
 ```
+
+**Stored as:** `{ "id": 42, "url": "...", "filename": "hero.jpg" }` (Spatie Media Library record). URL defaults are returned as-is when no DB record exists.
+
+**Access:**
+
+```php
+ui()->section('hero')->field('image')->getUrl()      // file URL
+ui()->section('hero')->field('image')->getString()   // '' (not a string field)
+```
+
+---
 
 ### File
 
 ```php
 Field::file('cv')
     ->accept(['application/pdf', 'application/msword'])
-    ->maxSize(10240)
+    ->maxSize(10240)   // KB
     ->multiple(false)
 ```
+
+**Stored as:** same `{ id, url, filename }` shape as Image.
+
+---
 
 ### Color
 
 ```php
 Field::color('brand_color')
-    ->format('hex')   // hex | rgb | hsl
     ->default('#3b82f6')
+
+Field::color('overlay')
+    ->alpha()   // enables opacity slider (stores rgba)
 ```
 
-### Date / Time / DateTime
+**Stored as:** hex/rgb/rgba string.
+
+---
+
+### Date
 
 ```php
-Field::date('launch_date')->default('2025-01-01')
-Field::time('open_at')->default('09:00')
-Field::datetime('published_at')
+Field::date('launch_date')
+    ->default('2025-01-01')
+    ->min('2024-01-01')
+    ->max('2030-12-31')
 ```
+
+**Stored as:** `YYYY-MM-DD` string.
+
+---
+
+### Time
+
+```php
+Field::time('open_at')->default('09:00')
+```
+
+**Stored as:** `HH:MM` string.
+
+---
+
+### Datetime
+
+```php
+Field::datetime('published_at')
+    ->min('2024-01-01T08:00')
+    ->max('2030-12-31T18:00')
+```
+
+**Stored as:** ISO datetime string.
+
+---
 
 ### Date Range
 
 ```php
 Field::dateRange('sale_period')
-// Stored as { "start": "2025-06-01", "end": "2025-06-30" }
-// Access: $field->getString() returns "2025-06-01 – 2025-06-30"
+    ->defaultRange('2025-06-01', '2025-06-30')
 ```
+
+**Stored as:** `{ "start": "2025-06-01", "end": "2025-06-30" }`.
+
+---
 
 ### URL
 
 ```php
 Field::url('website')->default('https://example.com')
-// Access: $field->getUrl() returns the validated URL string
 ```
+
+`url` validation rule is automatically appended. **Stored as:** URL string.
+
+---
 
 ### Price
 
 ```php
 Field::price('ticket_price')
-// Stored as { "amount": "49.99", "currency": "USD" }
-// Access: $field->amount(), $field->currency()
+    ->currency('USD')
+    ->decimals(2)
+    ->currencies(['USD', 'EUR', 'GBP'])  // restricts the currency selector
 ```
 
-### Translatable fields
+**Stored as:** `{ "amount": "49.99", "currency": "USD" }`.
 
-Any field can be marked translatable — the dashboard shows a tab per configured locale and the stored value becomes a locale-keyed object.
+**Access:**
 
 ```php
-// config/ui-manager.php
-'locales'        => ['en', 'ar'],
-'default_locale' => 'en',
+$field = ui()->section('event')->field('ticket_price');
+echo $field->amount();    // 49.99 (float)
+echo $field->currency();  // "USD"
 ```
+
+---
+
+## Field Validation
+
+Every field's `->rules()` definition is enforced server-side on every save. You do not need to write any additional validation logic.
 
 ```php
-Field::text('title')->translatable()->label('Page Title'),
-Field::textarea('body')->translatable(),
+public function fields(): array
+{
+    return [
+        Field::text('heading')->rules(['required', 'max:100']),
+        Field::text('email')->rules(['required', 'email']),
+        Field::url('website'),       // automatically has 'url' rule
+        Field::textarea('bio'),      // no rules — any value accepted
+    ];
+}
 ```
+
+`SaveSectionRequest` dynamically resolves the section definition from the route and applies each field's rules as `fields.fieldName => [...]`.
+
+### Translatable field validation
+
+When a field is `->translatable()`, rules are applied per-locale:
 
 ```php
-// Blade — resolves current app locale automatically:
-ui()->section('hero')->field('title')        // → "Welcome"
-
-// Explicit locale:
-ui()->section('hero')->field('title:ar')     // → "أهلاً"
+Field::text('title')
+    ->translatable()
+    ->rules(['required', 'max:200'])
 ```
 
-### Select — key vs label
+This generates rules `fields.title.en` and `fields.title.ar` (for every locale in `config('ui-manager.locales')`).
 
-```php
-Field::select('status')
-    ->options(['draft' => 'Draft', 'published' => 'Published'])
-    ->returnLabel()   // getString() returns "Published" instead of "published"
-```
+### Inline error display
 
-```php
-$field = ui()->section('post')->field('status');
-echo $field->getString();   // → "Published"  (returnLabel enabled)
-echo $field->label();       // → "Published"  (always returns human label)
-```
-
-### Common builder methods (all field types)
-
-```php
-->label('Display Label')
-->help('Help text shown under the field')
-->rules(['required', 'string'])
-->required()        // prepends 'required' to rules
-->nullable()        // appends 'nullable' to rules
-->default($value)
-->props(['placeholder' => 'Enter value...'])
-```
+The dashboard automatically shows field-level 422 validation errors below each input — both in `SectionForm` and `RepeatableItemForm`.
 
 ---
 
 ## Repeatable Sections
 
-Repeatable sections store an ordered list of items instead of a single record. Use them for navigation links, team members, FAQs, testimonials, etc.
+Add `implements Repeatable` to make a section store an ordered list of items instead of a single record. Use it for navigation links, team members, FAQs, testimonials, etc.
 
 ```php
 use AhmedAliraqi\UiManager\Contracts\Repeatable;
@@ -340,61 +553,189 @@ class SocialLinks extends Section implements Repeatable
     {
         return [
             Field::text('platform'),
-            Field::text('url'),
+            Field::url('url'),
             Field::image('icon'),
         ];
     }
 }
 ```
 
-The `implements Repeatable` marker is all that's needed — the dashboard automatically switches to full CRUD mode with drag-and-drop reordering.
+The dashboard automatically switches to full CRUD mode with drag-and-drop reordering.
+
+**Blade:**
+
+```blade
+@foreach(ui()->section('social') as $item)
+    <a href="{{ $item->field('url') }}">
+        <img src="{{ $item->field('icon')->getUrl() }}" alt="">
+        {{ $item->field('platform') }}
+    </a>
+@endforeach
+```
+
+> **Note:** Variable placeholders (`%key%`) are intentionally **not** expanded inside repeatable items. Items are pure data rows.
+
+---
+
+## Multi-language / Translatable Fields
+
+### 1 — Configure locales
+
+```php
+// config/ui-manager.php
+'locales'        => ['en', 'ar'],
+'default_locale' => 'en',
+```
+
+### 2 — Mark fields as translatable
+
+```php
+public function fields(): array
+{
+    return [
+        Field::text('title')->translatable()->label('Page Title'),
+        Field::textarea('body')->translatable(),
+        Field::text('cta')->label('Button text'),  // NOT translatable
+    ];
+}
+```
+
+### Locale-keyed defaults
+
+Pass a locale-keyed array to `->default()` to pre-fill each locale independently:
+
+```php
+Field::text('title')
+    ->translatable()
+    ->default(['en' => 'Welcome', 'ar' => 'أهلاً'])
+
+Field::textarea('bio')
+    ->translatable()
+    ->default(['en' => 'About us', 'ar' => 'من نحن'])
+```
+
+A plain string default is also valid — it is applied to the `default_locale` only, leaving other locales empty:
+
+```php
+Field::text('title')
+    ->translatable()
+    ->default('Welcome')   // only pre-fills 'en' (the default_locale)
+```
+
+### 3 — Stored format
+
+```json
+{
+  "title": { "en": "Welcome", "ar": "أهلاً" },
+  "body":  { "en": "Hello world", "ar": "مرحبا بالعالم" },
+  "cta":   "Get started"
+}
+```
+
+### 4 — Blade usage
+
+```php
+// Current app locale (e.g. 'en'):
+ui()->section('hero')->field('title')        // → "Welcome"
+
+// Explicit locale:
+ui()->section('hero')->field('title:ar')     // → "أهلاً"
+
+// Switch app locale:
+app()->setLocale('ar');
+ui()->section('hero')->field('title')        // → "أهلاً"
+```
+
+**Fallback order:** requested locale → `default_locale` → first non-empty stored locale → `''`.
 
 ---
 
 ## Variables System
 
-Variables allow dynamic values to be embedded in any text field using `%key%` syntax.
+Any string field value stored in the database can reference other values using `%key%` placeholders. They are resolved lazily when `getString()` is called — never at storage time.
+
+### Enabling variable support on a field
+
+Variable support is **opt-in per field** — use `->hasVariable()`:
+
+```php
+public function fields(): array
+{
+    return [
+        Field::text('heading')->hasVariable(),   // shows variable picker in dashboard
+        Field::image('logo')->hasVariable(),      // shows url/name format options
+        Field::textarea('bio'),                   // NO variable picker
+    ];
+}
+```
+
+### Syntax
+
+```
+%app.name%                          built-in
+%banner.title%                      any section.field pair
+%header.logo:url%                   image/file — returns the file URL
+%header.logo:name%                  image/file — original filename
+%header.logo:size%                  file — file size in bytes
+%event.date:format(Y-m-d)%          date/datetime — formatted string
+%event.starts_at:format(Y-m-d H:i)% datetime — formatted string
+%promo.period:start%                date_range — start date
+%promo.period:end%                  date_range — end date
+%product.price%                     price — raw stored value
+%product.price:currency%            price — currency code
+```
+
+### Format picker in the dashboard
+
+When `->hasVariable()` is set, a **variable picker** appears next to the field label:
+
+| Formats available | UI |
+|-------------------|----|
+| 1 format | Single copy button showing the placeholder |
+| Multiple formats | Dropdown button listing all available formats |
+
+Clicking any format copies its placeholder to the clipboard.
+
+The **variable autocomplete** (typing `%` inside a text field) is also only shown when the field has `->hasVariable()`.
+
+### Per-field format table
+
+| Field type | Available placeholders |
+|------------|------------------------|
+| `text` / `textarea` / `editor` / `select` / `color` / `url` | `%section.field%` |
+| `image` | `%section.field:url%`, `%section.field:name%` |
+| `file` | `%section.field:url%`, `%section.field:name%`, `%section.field:size%` |
+| `date` | `%section.field%`, `%section.field:format(Y-m-d)%` |
+| `datetime` | `%section.field%`, `%section.field:format(Y-m-d H:i)%` |
+| `date_range` | `%section.field:start%`, `%section.field:end%` |
+| `price` | `%section.field%`, `%section.field:currency%` |
 
 ### Built-in variables
 
-| Variable     | Value                  |
-|-------------|------------------------|
-| `%app.name%`| `config('app.name')`   |
-| `%app.url%` | `config('app.url')`    |
-| `%app.env%` | `config('app.env')`    |
+| Variable      | Resolves to           |
+|---------------|-----------------------|
+| `%app.name%`  | `config('app.name')`  |
+| `%app.url%`   | `config('app.url')`   |
+| `%app.env%`   | `config('app.env')`   |
 
-### Section field variables
+### Custom variables
 
-Any section field is automatically available as `%section_name.field_name%`:
-
-```
-Welcome to %banner.title%!
-Visit us at %contact.address%
-```
-
-### Registering custom variables
-
-In a `ServiceProvider` or `AppServiceProvider`:
+Register in a service provider:
 
 ```php
 use AhmedAliraqi\UiManager\Variables\VariableRegistry;
 
 public function boot(VariableRegistry $registry): void
 {
-    // Static value
-    $registry->value('company.name', 'Acme Corp');
-
-    // Dynamic resolver
+    $registry->value('site.year', (string) now()->year);
     $registry->register('auth.user', fn () => auth()->user()?->name ?? 'Guest');
-
-    // From config
     $registry->register('mail.support', fn () => config('mail.from.address'));
 }
 ```
 
-### Variable autocomplete
+### Variable Browser in the dashboard
 
-The dashboard's text fields display a **copy button** showing the variable key for each field. Typing `%` in any text input triggers an autocomplete dropdown showing all registered variables.
+The **Variables** button in the header opens a searchable slide-in panel listing every registered variable with one-click copy.
 
 ---
 
@@ -403,28 +744,39 @@ The dashboard's text fields display a **copy button** showing the variable key f
 ### Non-repeatable sections
 
 ```blade
-{{-- Get a field value (returns FieldValueData, casts to string) --}}
+{{-- Render a field (auto-cast to string) --}}
 {{ ui()->section('banner')->field('title') }}
 
-{{-- Access the URL of an image field --}}
-<img src="{{ ui()->section('banner')->field('hero')->getUrl() }}">
-
-{{-- Shorthand helper --}}
+{{-- Shorthand — equivalent --}}
 {{ ui('banner')->field('title') }}
 
-{{-- Check if empty --}}
+{{-- HTML field (editor) — unescaped --}}
+{!! ui('banner')->field('description') !!}
+
+{{-- Image URL --}}
+<img src="{{ ui('banner')->field('hero')->getUrl() }}" alt="">
+
+{{-- Check for empty value --}}
 @if(!ui('banner')->field('title')->isEmpty())
     <h1>{{ ui('banner')->field('title') }}</h1>
 @endif
+
+{{-- Explicit locale --}}
+{{ ui('banner')->field('title:ar') }}
+
+{{-- Price fields --}}
+{{ ui('event')->field('price')->amount() }} {{ ui('event')->field('price')->currency() }}
 ```
 
 ### Repeatable sections
 
 ```blade
-{{-- Iterate with @foreach --}}
 @foreach(ui()->section('social') as $item)
     <a href="{{ $item->field('url') }}">{{ $item->field('platform') }}</a>
 @endforeach
+
+{{-- Count items --}}
+{{ ui()->section('social')->count() }}
 
 {{-- Check if empty --}}
 @if(!ui()->section('social')->isEmpty())
@@ -438,47 +790,38 @@ The dashboard's text fields display a **copy button** showing the variable key f
 ### Blade directives
 
 ```blade
-{{-- Inline field --}}
 @uiField('banner', 'title')
-
-{{-- HTML is not escaped (for editor fields) --}}
-{!! ui('hero')->field('description') !!}
 ```
 
 ---
 
 ## Dashboard
 
-Access the dashboard at `/ui-manager` (configurable via `routes.prefix`).
+Access the dashboard at `/ui-manager` (configured via `routes.prefix`).
 
-**Features:**
-- Sidebar lists all registered pages
-- Page view shows tabbed sections
-- Section forms auto-render the correct field component per type
-- Repeatable sections have full CRUD with sort-order reordering
-- Every field shows its variable key with a one-click copy button
-- Variable autocomplete activates when you type `%` in text inputs
-- Default values are pre-filled when no saved data exists
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Page sidebar** | All registered pages listed; click to open |
+| **Section tabs** | One tab per visible section on a page |
+| **Inline edit forms** | No intermediate preview step; form shown immediately on tab click |
+| **Field components** | Auto-selected by field type (text, editor, image, color, date, price, …) |
+| **Translatable fields** | Locale tab bar rendered above the input for each configured locale |
+| **Deferred image upload** | File held in memory until form submit; no wasted uploads on discard |
+| **Repeatable CRUD** | Add / edit / delete / drag-to-reorder items; insertion line shows drop target |
+| **Toast notifications** | Save success and errors shown as slide-in toasts (bottom-right) |
+| **Keyboard shortcut** | `Ctrl+S` / `Cmd+S` submits the active form |
+| **Unsaved-changes warning** | Browser warns before closing/refreshing a page with unsaved edits |
+| **Loading skeleton** | Animated placeholder shown while section data is fetching |
+| **Inline validation errors** | Field-level 422 errors from the API are displayed below each field |
+| **Variable picker** | Fields marked `->hasVariable()` show a copy button (or dropdown for multiple formats) |
+| **Variable autocomplete** | Typing `%` in a variable-enabled text input opens a filtered inline dropdown |
+| **Variable Browser** | "Variables" button in the header opens a searchable slide-in panel |
 
 ---
 
 ## Artisan Commands
-
-### Create a Page
-
-```bash
-php artisan make:ui-page About
-php artisan make:ui-page Marketing/Landing  # creates in a subdirectory
-php artisan make:ui-page --name=about-us AboutUs
-```
-
-### Create a Section
-
-```bash
-php artisan make:ui-section Banner --page="App\Ui\Pages\Home"
-php artisan make:ui-section SocialLinks --page="App\Ui\Pages\Home" --repeatable
-php artisan make:ui-section Hero --layout=marketing
-```
 
 ### Install
 
@@ -487,11 +830,32 @@ php artisan ui-manager:install          # publish config + assets, run migration
 php artisan ui-manager:install --force  # overwrite previously published files
 ```
 
+### Create a Page
+
+```bash
+php artisan make:ui-page About
+php artisan make:ui-page Marketing/Landing  # creates in App\Ui\Pages\Marketing\
+php artisan make:ui-page AboutUs --name=about-us
+```
+
+### Create a Section
+
+```bash
+php artisan make:ui-section Banner
+php artisan make:ui-section Banner --page="App\Ui\Pages\Home"
+php artisan make:ui-section SocialLinks --page="App\Ui\Pages\Home" --repeatable
+php artisan make:ui-section Hero --layout=marketing --force
+```
+
+When `--page` is omitted, the command shows an interactive list of all registered pages. If none are registered yet, it falls back to a free-text prompt.
+
 ---
 
 ## Extending the Package
 
 ### Register pages and sections programmatically
+
+Auto-discovery covers `app/Ui/Pages` and `app/Ui/Sections` by default. To register classes from other locations:
 
 ```php
 use AhmedAliraqi\UiManager\Services\PageRegistry;
@@ -510,39 +874,57 @@ public function boot(PageRegistry $pages, SectionRegistry $sections): void
 
 ### Custom field types
 
-Extend `BaseField` and register a Vue component:
+1. **Create the PHP class** in `app/Ui/Fields/RatingField.php`:
 
 ```php
-// PHP
-class ColorField extends BaseField
+use AhmedAliraqi\UiManager\Fields\BaseField;
+
+class RatingField extends BaseField
 {
-    public function getType(): string { return 'color'; }
+    protected int $max = 5;
+
+    public function max(int $max): static
+    {
+        $this->max = $max;
+        return $this;
+    }
+
+    public function getType(): string
+    {
+        return 'rating';
+    }
+
+    public function toArray(): array
+    {
+        return array_merge(parent::toArray(), ['max' => $this->max]);
+    }
 }
 ```
 
-```js
-// In your own JS entrypoint, register the component:
-import ColorFieldComponent from './ColorFieldComponent.vue'
-// Mount with a custom FieldRenderer override
-```
+2. **Create a Vue component** for the dashboard.
 
-### Middleware protection
+3. **Register it** in `FieldRenderer.vue` under the `'rating'` type case.
 
-```php
-// config/ui-manager.php
-'routes' => [
-    'middleware'     => ['web', 'auth', 'can:manage-ui'],
-    'api_middleware' => ['web', 'auth', 'can:manage-ui'],
-],
-```
+4. **Rebuild assets:** `npm run build` (only needed when modifying the dashboard frontend).
 
-### Flush cache after saves
-
-The package flushes cache automatically after API saves. To flush manually:
+### Register custom variables
 
 ```php
-ui()->flushCache('home', 'banner');
-ui()->flushAllCache();
+use AhmedAliraqi\UiManager\Variables\VariableRegistry;
+
+public function boot(VariableRegistry $registry): void
+{
+    $registry->value('site.year', (string) now()->year);
+    $registry->register('store.name', fn () => Store::first()?->name ?? '');
+}
+```
+
+Use `%site.year%` or `%store.name%` in any variable-enabled text field.
+
+### Manually flush the section cache
+
+```php
+app(\AhmedAliraqi\UiManager\Services\UiManager::class)->flushCache('home', 'banner');
 ```
 
 ---
@@ -550,14 +932,10 @@ ui()->flushAllCache();
 ## Testing
 
 ```bash
-# Run the full test suite
-composer test
-
-# Or directly with phpunit
 ./vendor/bin/phpunit
 
-# Run only unit tests
-./vendor/bin/phpunit --testsuite Unit
+./vendor/bin/phpunit --filter SectionControllerTest  # single class
+./vendor/bin/phpunit --filter test_section_uses_db_value_over_default  # single test
 ```
 
 ### Testing sections in your application
@@ -565,7 +943,7 @@ composer test
 ```php
 use AhmedAliraqi\UiManager\Models\UiContent;
 
-// Seed a section for testing
+// Seed a section value:
 UiContent::create([
     'layout'  => 'default',
     'page'    => 'home',
@@ -573,7 +951,7 @@ UiContent::create([
     'fields'  => ['title' => 'Test Title'],
 ]);
 
-// Disable cache in test environment
+// Disable cache in test environments:
 config(['ui-manager.cache.enabled' => false]);
 ```
 
@@ -583,18 +961,28 @@ config(['ui-manager.cache.enabled' => false]);
 
 ```
 src/
+├── Console/
+│   ├── InstallCommand.php
+│   ├── MakeUiPageCommand.php
+│   └── MakeUiSectionCommand.php
 ├── Contracts/
-│   ├── HasFields.php          Interface requiring fields() method
-│   ├── Repeatable.php         Marker interface for list-type sections
+│   ├── HasFields.php                interface requiring fields() method
+│   ├── Repeatable.php               marker interface for list-type sections
 │   └── Renderable.php
 ├── Core/
-│   ├── Page.php               Abstract base for all pages
-│   └── Section.php            Abstract base for all sections
+│   ├── Page.php                     abstract base for all pages
+│   └── Section.php                  abstract base for all sections
+├── DTOs/
+│   ├── FieldValueData.php           typed accessor: getString(), getUrl(), amount(), …
+│   └── SectionData.php
+├── Exceptions/
+│   └── UiManagerException.php
+├── Facades/
+│   └── Ui.php
 ├── Fields/
-│   ├── Field.php              Static factory (entry point)
-│   ├── BaseField.php          Fluent builder base
+│   ├── Field.php                    static factory (entry point)
+│   ├── BaseField.php                fluent builder base; hasVariable() opt-in
 │   ├── TextField.php
-│   ├── TextareaField.php
 │   ├── EditorField.php
 │   ├── SelectField.php
 │   ├── ImageField.php
@@ -606,44 +994,66 @@ src/
 │   ├── DateRangeField.php
 │   ├── UrlField.php
 │   └── PriceField.php
-├── Models/
-│   ├── UiContent.php          Stores section field data
-│   └── UiMedia.php            Uploaded file records
-├── Services/
-│   ├── UiManager.php          Main entry point (ui() helper)
-│   ├── PageRegistry.php       Page class registry + auto-discovery
-│   ├── SectionRegistry.php    Section class registry + auto-discovery
-│   ├── VariableParser.php     %var% replacement engine
-│   └── MediaUploadService.php File upload handler
-├── Variables/
-│   └── VariableRegistry.php   Stores key => resolver mappings
-├── Support/
-│   ├── ClassDiscovery.php     Scans dirs for Page/Section subclasses
-│   ├── SectionView.php        Wraps a single section's data
-│   ├── RepeatableSectionView.php  Iterable wrapper for repeatable sections
-│   ├── SectionItemView.php    Single item within a repeatable section
-│   └── helpers.php            ui() global helper
-├── DTOs/
-│   ├── FieldValueData.php     Typed field value with string/URL access
-│   └── SectionData.php
-├── Facades/
-│   └── Ui.php
 ├── Http/
 │   ├── Controllers/
 │   │   ├── DashboardController.php
 │   │   └── Api/
 │   │       ├── PageController.php
-│   │       ├── SectionController.php
+│   │       ├── SectionController.php    validates reorder IDs; no events
 │   │       ├── MediaController.php
 │   │       └── VariableController.php
 │   └── Requests/
-│       └── SaveSectionRequest.php
-├── Console/
-│   ├── InstallCommand.php
-│   ├── MakeUiPageCommand.php
-│   └── MakeUiSectionCommand.php
+│       └── SaveSectionRequest.php       dynamic field-level + per-locale rules
+├── Models/
+│   ├── UiContent.php               single table for all section data
+│   ├── UiMediaFile.php             Spatie media owner model
+│   └── UiMedia.php                 alias
+├── Services/
+│   ├── UiManager.php               main entry point — ui() helper target
+│   ├── PageRegistry.php
+│   ├── SectionRegistry.php
+│   ├── VariableParser.php          %key:modifier()% replacement with depth guard
+│   └── MediaUploadService.php
+├── Support/
+│   ├── ClassDiscovery.php
+│   ├── SectionView.php
+│   ├── RepeatableSectionView.php   IteratorAggregate — foreach-able
+│   ├── SectionItemView.php
+│   └── helpers.php                 ui() global helper
+├── Variables/
+│   └── VariableRegistry.php        resolvers + modifier handlers (format, start, end, …)
 └── UiManagerServiceProvider.php
 ```
+
+### Data flow
+
+```
+PHP Section class (fields() definition)
+        ↓
+Dashboard reads via  GET /ui-manager/api/pages/{page}/sections/{section}
+        ↓
+User edits and submits
+        ↓
+SaveSectionRequest validates (field rules + per-locale for translatable)
+        ↓
+SectionController saves → ui_contents.fields (JSON)
+        ↓
+Cache flushed
+        ↓
+Blade calls  ui()->section('name')->field('key')
+        ↓
+UiManager reads from cache (or DB if cold)
+        ↓
+Returns FieldValueData · variables resolved on getString() / getUrl()
+```
+
+### Database tables
+
+| Table | Purpose |
+|-------|---------|
+| `ui_contents` | All section field data; `sort_order IS NULL` = single record, `NOT NULL` = repeatable item |
+| `ui_media_files` | Thin owner model for Spatie Media Library |
+| `media` | Spatie's standard media table (bundled migration) |
 
 ---
 
