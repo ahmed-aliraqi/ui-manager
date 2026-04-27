@@ -13,8 +13,7 @@ use AhmedAliraqi\UiManager\Fields\SelectField;
 final readonly class FieldValueData
 {
     /**
-     * @param bool        $parseVariables  Set to false for repeatable section items,
-     *                                     where %placeholder% expansion is intentionally disabled.
+     * @param bool        $parseVariables  Whether to resolve %placeholder% variables in the value.
      * @param string|null $locale          Explicit locale for translatable fields.
      *                                     Null means use app()->getLocale().
      */

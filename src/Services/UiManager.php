@@ -87,8 +87,10 @@ final class UiManager
         $cacheKey = $this->cacheKey($pageName, $definition->getName(), $layout, 'repeatable');
 
         $rows = $this->cached($cacheKey, function () use ($definition, $pageName, $layout): array {
-            return UiContent::findRepeatableItems($pageName, $definition->getName(), $layout)
+            $dbRows = UiContent::findRepeatableItems($pageName, $definition->getName(), $layout)
                 ->map(fn (UiContent $c) => $c->fields ?? [])->all();
+
+            return $dbRows !== [] ? $dbRows : $definition->default();
         });
 
         return new RepeatableSectionView($definition, $rows);

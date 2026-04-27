@@ -54,7 +54,7 @@
               :title="`Click to copy ${v.placeholder}`"
             >
               <code class="text-primary font-mono text-xs leading-5 shrink-0">{{ v.placeholder }}</code>
-              <span class="text-xs text-muted-foreground truncate leading-5">{{ v.key }}</span>
+              <span class="text-xs text-muted-foreground truncate leading-5">{{ v.label || v.key }}</span>
               <span
                 class="ml-auto text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 leading-5"
               >Copy</span>

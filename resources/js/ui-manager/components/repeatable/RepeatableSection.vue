@@ -153,8 +153,24 @@ function itemKey(item, idx) {
 
 function itemLabel(item, idx) {
   const fields = item.fields ?? {}
-  const firstValue = Object.values(fields).find(v => typeof v === 'string' && v.trim() !== '')
-  return firstValue ?? `Item ${idx + 1}`
+  const key = props.definition?.list_field
+
+  const resolveValue = (v) => {
+    if (typeof v === 'string' && v.trim() !== '') return v
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const locale = document.documentElement.lang || 'en'
+      if (typeof v[locale] === 'string' && v[locale].trim() !== '') return v[locale]
+      return Object.values(v).find(s => typeof s === 'string' && s.trim() !== '') ?? null
+    }
+    return null
+  }
+
+  if (key && key in fields) {
+    const resolved = resolveValue(fields[key])
+    if (resolved) return resolved
+  }
+
+  return Object.values(fields).reduce((found, v) => found ?? resolveValue(v), null) ?? `Item ${idx + 1}`
 }
 
 function toggleExpand(key) {

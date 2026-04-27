@@ -101,6 +101,14 @@ final class SectionRegistry
     /**
      * Find a section by its short name across all pages, with an optional layout filter.
      */
+    /** @return array<string, Section> */
+    public function all(): array
+    {
+        $this->autoDiscover();
+
+        return $this->sections;
+    }
+
     public function findByName(string $sectionName, ?string $layout = null): ?Section
     {
         $this->autoDiscover();

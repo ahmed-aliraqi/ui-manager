@@ -28,7 +28,10 @@ import { useUiStore } from './stores/ui.js'
 import { onMounted } from 'vue'
 
 const store = useUiStore()
-onMounted(() => store.fetchPages())
+onMounted(() => {
+  store.fetchPages()
+  store.fetchVariables()
+})
 </script>
 
 <style scoped>

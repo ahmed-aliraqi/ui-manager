@@ -38,7 +38,7 @@ final class SectionView
         $fieldDef  = $fieldsMap[$name] ?? $this->makeDummyField($name);
         $rawValue  = $this->data[$name] ?? $fieldDef->getDefault();
 
-        return new FieldValueData($name, $rawValue, $fieldDef, locale: $locale);
+        return new FieldValueData($name, $rawValue, $fieldDef, parseVariables: true, locale: $locale);
     }
 
     /**

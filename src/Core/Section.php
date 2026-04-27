@@ -27,6 +27,9 @@ abstract class Section implements HasFields
     /** Human-readable label. Falls back to title-cased $name. */
     protected string $label = '';
 
+    /** Field name used as the item label in the repeatable list. Empty = auto (first string value). */
+    protected string $listField = '';
+
     /**
      * Define the fields for this section.
      *
@@ -66,6 +69,11 @@ abstract class Section implements HasFields
         return $this->order;
     }
 
+    public function getListField(): string
+    {
+        return $this->listField;
+    }
+
     public function isRepeatable(): bool
     {
         return $this instanceof \AhmedAliraqi\UiManager\Contracts\Repeatable;
@@ -82,6 +90,17 @@ abstract class Section implements HasFields
         }
 
         return $map;
+    }
+
+    /**
+     * Pre-seeded items shown when no DB data exists (repeatable sections only).
+     * Override to provide default items; each element is a field-map array.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function default(): array
+    {
+        return [];
     }
 
     /**
@@ -113,6 +132,7 @@ abstract class Section implements HasFields
             'visible'      => $this->isVisible(),
             'order'        => $this->getOrder(),
             'repeatable'   => $this->isRepeatable(),
+            'list_field'   => $this->getListField(),
             'fields'       => array_values(
                 array_map(function (BaseField $f) {
                     $arr = $f->toArray();

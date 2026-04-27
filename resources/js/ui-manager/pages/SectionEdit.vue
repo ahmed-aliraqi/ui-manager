@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { ChevronLeftIcon } from 'lucide-vue-next'
 import { useUiStore } from '../stores/ui.js'
 import SectionForm from '../components/SectionForm.vue'
@@ -45,6 +45,4 @@ const store = useUiStore()
 
 const pageData = computed(() => store.pageMap[props.page])
 const sectionDef = computed(() => pageData.value?.sections?.find(s => s.name === props.section))
-
-onMounted(() => store.fetchVariables())
 </script>

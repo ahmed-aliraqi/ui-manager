@@ -21,6 +21,8 @@ A production-ready, class-driven UI management system for Laravel. Define your U
 5. [Field Types](#field-types)
 6. [Field Validation](#field-validation)
 7. [Repeatable Sections](#repeatable-sections)
+   - [List Label Field](#list-label-field)
+   - [Repeatable Section Defaults](#repeatable-section-defaults)
 8. [Multi-language / Translatable Fields](#multi-language--translatable-fields)
 9. [Variables System](#variables-system)
 10. [Blade Usage](#blade-usage)
@@ -201,7 +203,7 @@ class Banner extends Section
 }
 ```
 
-> **Field defaults** are defined per-field with `->default()`. There is no section-level `default()` method — all defaults live on the field itself.
+> **Field defaults** are defined per-field with `->default()`. For repeatable sections, override the section-level `default()` method to seed initial items (see [Repeatable Section Defaults](#repeatable-section-defaults)).
 
 | Property   | Type   | Default     | Description                            |
 |------------|--------|-------------|----------------------------------------|
@@ -305,7 +307,7 @@ Field::text('name')
     ->nullable()      // appends 'nullable' to the rules array
     ->default($value)
     ->translatable()  // enable multi-locale input (see below)
-    ->hasVariable()   // show variable picker in the dashboard (see Variables)
+    ->hasVariable()   // export this field as a variable (e.g. %section.name%) — see Variables
 ```
 
 ---
@@ -573,7 +575,73 @@ The dashboard automatically switches to full CRUD mode with drag-and-drop reorde
 @endforeach
 ```
 
-> **Note:** Variable placeholders (`%key%`) are intentionally **not** expanded inside repeatable items. Items are pure data rows.
+> **Note:** Variable placeholders (`%key%`) are expanded inside repeatable items just like in regular sections.
+
+### List Label Field
+
+By default the dashboard shows the first non-empty string value as the label in each item row. Set `$listField` to pin a specific field:
+
+```php
+class SocialLinks extends Section implements Repeatable
+{
+    protected string $name      = 'social';
+    protected string $page      = Home::class;
+    protected string $listField = 'platform';   // shown in the collapsed row header
+
+    public function fields(): array
+    {
+        return [
+            Field::text('platform'),
+            Field::url('url'),
+            Field::image('icon'),
+        ];
+    }
+}
+```
+
+Works with translatable fields too — the dashboard picks the value for the active page locale.
+
+### Repeatable Section Defaults
+
+Override `default()` on a repeatable section to pre-seed items shown when no DB data exists yet. Once the user saves any items to the database, the `default()` result is ignored.
+
+```php
+class SocialLinks extends Section implements Repeatable
+{
+    protected string $name = 'social';
+    protected string $page = Home::class;
+
+    public function fields(): array
+    {
+        return [
+            Field::text('platform'),
+            Field::url('url'),
+        ];
+    }
+
+    public function default(): array
+    {
+        return [
+            ['platform' => 'Facebook', 'url' => 'https://facebook.com'],
+            ['platform' => 'Twitter',  'url' => 'https://twitter.com'],
+        ];
+    }
+}
+```
+
+For sections with **translatable fields**, use locale-keyed arrays inside each item:
+
+```php
+public function default(): array
+{
+    return [
+        ['description' => ['ar' => 'وصف عربي', 'en' => 'English description']],
+        ['description' => ['ar' => 'عنصر ثاني', 'en' => 'Second item']],
+    ];
+}
+```
+
+The `make:ui-section --repeatable` command automatically generates a stub `default()` method with example items so you can customise it right away.
 
 ---
 
@@ -652,42 +720,65 @@ ui()->section('hero')->field('title')        // → "أهلاً"
 
 ## Variables System
 
-Any string field value stored in the database can reference other values using `%key%` placeholders. They are resolved lazily when `getString()` is called — never at storage time.
+Any field value stored in the database can reference other values using `%key%` placeholders. They are resolved lazily when `getString()` is called — never at storage time. **Every field supports placeholders automatically** — no special flag is needed to use them.
 
-### Enabling variable support on a field
+### Marking a field as a variable source
 
-Variable support is **opt-in per field** — use `->hasVariable()`:
+Use `->hasVariable()` to **export** a field's value as a reusable variable that other fields (or templates) can reference:
 
 ```php
 public function fields(): array
 {
     return [
-        Field::text('heading')->hasVariable(),   // shows variable picker in dashboard
-        Field::image('logo')->hasVariable(),      // shows url/name format options
-        Field::textarea('bio'),                   // NO variable picker
+        Field::text('phone')->hasVariable(),   // exposes %general.phone% for use anywhere
+        Field::image('logo')->hasVariable(),    // exposes %general.logo:url%, %general.logo:name%
+        Field::textarea('bio'),                 // normal field — no export, but still resolves %placeholders% in its value
     ];
 }
+```
+
+`->hasVariable()` controls two things in the dashboard:
+- A **copy button** appears next to the field label showing the variable placeholder(s) for that field
+- The field is listed in the **Variable Browser** panel so editors can discover and copy it
+
+### Using variables in field values
+
+Any field value can contain `%placeholder%` syntax — **no extra configuration needed**. The substitution happens when the value is read, not when it is saved:
+
+```blade
+{{-- phone is marked hasVariable(), other fields can reference it --}}
+{{ ui('general')->field('phone') }}   {{-- +966 50 000 0000 --}}
+
+{{-- A URL field storing a WhatsApp deep-link with a phone placeholder --}}
+{{ ui('social')->field('whatsapp_link') }}   {{-- https://wa.me/+966500000000 --}}
+```
+
+```php
+// Section definition
+Field::text('phone')->hasVariable(),          // source — exported as %general.phone%
+Field::url('whatsapp_link'),                  // stores "https://wa.me/%general.phone%"
+                                              // resolved automatically at read time
 ```
 
 ### Syntax
 
 ```
-%app.name%                          built-in
-%banner.title%                      any section.field pair
-%header.logo:url%                   image/file — returns the file URL
-%header.logo:name%                  image/file — original filename
-%header.logo:size%                  file — file size in bytes
-%event.date:format(Y-m-d)%          date/datetime — formatted string
+%app.name%                           built-in
+%general.phone%                      any section.field marked hasVariable()
+%header.logo:url%                    image/file — returns the file URL
+%header.logo:name%                   image/file — original filename
+%header.logo:size%                   file — file size in bytes
+%event.date:format(Y-m-d)%           date/datetime — formatted string
 %event.starts_at:format(Y-m-d H:i)% datetime — formatted string
-%promo.period:start%                date_range — start date
-%promo.period:end%                  date_range — end date
-%product.price%                     price — raw stored value
-%product.price:currency%            price — currency code
+%promo.period:start%                 date_range — start date
+%promo.period:end%                   date_range — end date
+%product.price%                      price — raw stored value
+%product.price:currency%             price — currency code
 ```
 
-### Format picker in the dashboard
+### Variable picker in the dashboard
 
-When `->hasVariable()` is set, a **variable picker** appears next to the field label:
+When `->hasVariable()` is set on a field, a **copy button** appears next to the field label:
 
 | Formats available | UI |
 |-------------------|----|
@@ -696,7 +787,7 @@ When `->hasVariable()` is set, a **variable picker** appears next to the field l
 
 Clicking any format copies its placeholder to the clipboard.
 
-The **variable autocomplete** (typing `%` inside a text field) is also only shown when the field has `->hasVariable()`.
+The **variable autocomplete** is available in every text, textarea, and URL input — type `%` to open a filtered dropdown of all known variables.
 
 ### Per-field format table
 
@@ -815,8 +906,8 @@ Access the dashboard at `/ui-manager` (configured via `routes.prefix`).
 | **Unsaved-changes warning** | Browser warns before closing/refreshing a page with unsaved edits |
 | **Loading skeleton** | Animated placeholder shown while section data is fetching |
 | **Inline validation errors** | Field-level 422 errors from the API are displayed below each field |
-| **Variable picker** | Fields marked `->hasVariable()` show a copy button (or dropdown for multiple formats) |
-| **Variable autocomplete** | Typing `%` in a variable-enabled text input opens a filtered inline dropdown |
+| **Variable picker** | Fields marked `->hasVariable()` show a copy button (or dropdown for multiple formats) next to their label |
+| **Variable autocomplete** | Typing `%` in any text, textarea, or URL input opens a filtered inline dropdown of all known variables |
 | **Variable Browser** | "Variables" button in the header opens a searchable slide-in panel |
 
 ---
@@ -919,7 +1010,7 @@ public function boot(VariableRegistry $registry): void
 }
 ```
 
-Use `%site.year%` or `%store.name%` in any variable-enabled text field.
+Use `%site.year%` or `%store.name%` in any field value.
 
 ### Manually flush the section cache
 
@@ -981,7 +1072,7 @@ src/
 │   └── Ui.php
 ├── Fields/
 │   ├── Field.php                    static factory (entry point)
-│   ├── BaseField.php                fluent builder base; hasVariable() opt-in
+│   ├── BaseField.php                fluent builder base; hasVariable() exports field as a variable
 │   ├── TextField.php
 │   ├── EditorField.php
 │   ├── SelectField.php

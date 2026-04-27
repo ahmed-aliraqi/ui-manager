@@ -123,7 +123,7 @@ final class MakeUiSectionCommand extends Command
         $repeatableImpl  = $repeatable ? ' implements Repeatable' : '';
         $repeatableUse   = $repeatable
             ? "\nuse AhmedAliraqi\\UiManager\\Contracts\\Repeatable;" : '';
-        $displayName     = ucwords(str_replace('-', ' ', $name));
+        $defaultMethod   = $repeatable ? $this->buildDefaultMethod() : '';
 
         return <<<PHP
         <?php
@@ -147,8 +147,23 @@ final class MakeUiSectionCommand extends Command
                 return [
                     Field::text('title')->rules(['required', 'string', 'max:255']),
                 ];
-            }
+            }{$defaultMethod}
         }
+        PHP;
+    }
+
+    private function buildDefaultMethod(): string
+    {
+        return <<<'PHP'
+
+
+            public function default(): array
+            {
+                return [
+                    ['title' => 'First Item'],
+                    ['title' => 'Second Item'],
+                ];
+            }
         PHP;
     }
 

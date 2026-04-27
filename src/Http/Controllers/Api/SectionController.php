@@ -40,6 +40,14 @@ final class SectionController extends Controller
                     'fields'     => $c->fields ?? [],
                 ])->all();
 
+            if ($dbItems === []) {
+                $dbItems = array_values(array_map(
+                    fn (array $fields, int $idx) => ['id' => null, 'sort_order' => $idx, 'fields' => $fields],
+                    $definition->default(),
+                    array_keys($definition->default()),
+                ));
+            }
+
             return response()->json([
                 'data' => [
                     'section'    => $definition->toArray(),

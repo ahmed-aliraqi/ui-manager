@@ -127,6 +127,75 @@ final class UiManagerTest extends TestCase
         $this->assertSame(['Item One', 'Item Two'], $labels);
     }
 
+    public function test_repeatable_section_falls_back_to_section_defaults(): void
+    {
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $section = new class($page::class) extends Section implements Repeatable {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'social';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array { return [Field::text('label')]; }
+
+            public function default(): array
+            {
+                return [
+                    ['label' => 'Facebook'],
+                    ['label' => 'Twitter'],
+                ];
+            }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        $view = $this->manager->section('social');
+
+        $this->assertInstanceOf(RepeatableSectionView::class, $view);
+        $this->assertCount(2, $view);
+
+        $labels = [];
+        foreach ($view as $item) {
+            $labels[] = $item->field('label')->getString();
+        }
+
+        $this->assertSame(['Facebook', 'Twitter'], $labels);
+    }
+
+    public function test_repeatable_section_db_data_overrides_defaults(): void
+    {
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $section = new class($page::class) extends Section implements Repeatable {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'social';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array { return [Field::text('label')]; }
+
+            public function default(): array
+            {
+                return [['label' => 'Default Item']];
+            }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        UiContent::create(['layout' => 'default', 'page' => 'test-page', 'section' => 'social', 'fields' => ['label' => 'DB Item'], 'sort_order' => 0]);
+
+        $view   = $this->manager->section('social');
+        $labels = [];
+        foreach ($view as $item) {
+            $labels[] = $item->field('label')->getString();
+        }
+
+        $this->assertSame(['DB Item'], $labels);
+    }
+
     public function test_section_layout_variant_returns_separate_data(): void
     {
         $page = new class extends Page { protected string $name = 'test-page'; };
@@ -171,7 +240,213 @@ final class UiManagerTest extends TestCase
 
     // ------------------------------------------------------------------ repeatable: no variables
 
-    public function test_repeatable_item_field_does_not_parse_variables(): void
+    public function test_repeatable_default_item_resolves_variable_via_section_fallback(): void
+    {
+        // Mirrors the real-app setup: General section with phone->hasVariable(),
+        // resolved through the section.field fallback (no direct registry entry)
+        $layoutPage = new class extends Page { protected string $name = 'layout'; };
+
+        $generalSection = new class($layoutPage::class) extends Section {
+            public function __construct(string $p) { $this->page = $p; }
+            protected string $name   = 'general';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array
+            {
+                return [
+                    Field::text('phone')
+                        ->default('+966500268664')
+                        ->hasVariable(),
+                ];
+            }
+        };
+
+        $socialSection = new class($layoutPage::class) extends Section implements Repeatable {
+            public function __construct(string $p) { $this->page = $p; }
+            protected string $name   = 'social';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array
+            {
+                return [
+                    Field::text('platform'),
+                    Field::url('link')->hasVariable(),
+                ];
+            }
+
+            public function default(): array
+            {
+                return [
+                    ['platform' => 'Whatsapp', 'link' => 'https://wa.me/%general.phone%'],
+                ];
+            }
+        };
+
+        $this->pages->register($layoutPage);
+        $this->sections->register($generalSection);
+        $this->sections->register($socialSection);
+
+        $link = $this->manager->section('social')->first()->field('link')->getString();
+
+        $this->assertSame('https://wa.me/+966500268664', $link);
+    }
+
+    public function test_repeatable_default_item_resolves_variable_in_any_field(): void
+    {
+        app(VariableRegistry::class)->value('general.phone', '+966558024044');
+
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $section = new class($page::class) extends Section implements Repeatable {
+            public function __construct(string $p) { $this->page = $p; }
+            protected string $name   = 'social';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array
+            {
+                return [
+                    Field::text('platform'),
+                    Field::url('link'),
+                ];
+            }
+
+            public function default(): array
+            {
+                return [
+                    ['platform' => 'Whatsapp', 'link' => 'https://wa.me/%general.phone%'],
+                ];
+            }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        $link = $this->manager->section('social')->first()->field('link')->getString();
+
+        $this->assertSame('https://wa.me/+966558024044', $link);
+    }
+
+    public function test_repeatable_default_item_keeps_placeholder_when_variable_not_registered(): void
+    {
+        // general.phone is NOT registered — placeholder must stay intact
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $section = new class($page::class) extends Section implements Repeatable {
+            public function __construct(string $p) { $this->page = $p; }
+            protected string $name   = 'social';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array
+            {
+                return [
+                    Field::text('platform'),
+                    Field::url('link'),
+                ];
+            }
+
+            public function default(): array
+            {
+                return [
+                    ['platform' => 'Whatsapp', 'link' => 'https://wa.me/%general.phone%'],
+                ];
+            }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        $link = $this->manager->section('social')->first()->field('link')->getString();
+
+        $this->assertSame('https://wa.me/%general.phone%', $link);
+    }
+
+    public function test_any_field_resolves_section_field_placeholder(): void
+    {
+        // %general.phone% auto-resolved via section.field fallback (no manual registry entry)
+        $generalPage = new class extends Page { protected string $name = 'general-page'; };
+
+        $generalSection = new class($generalPage::class) extends Section {
+            public function __construct(string $p) { $this->page = $p; }
+            protected string $name   = 'general';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array { return [Field::text('phone')]; }
+        };
+
+        $socialPage = new class extends Page { protected string $name = 'social-page'; };
+
+        $socialSection = new class($socialPage::class) extends Section implements Repeatable {
+            public function __construct(string $p) { $this->page = $p; }
+            protected string $name   = 'social';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array { return [Field::text('link')]; }
+        };
+
+        $this->pages->register($generalPage);
+        $this->pages->register($socialPage);
+        $this->sections->register($generalSection);
+        $this->sections->register($socialSection);
+
+        UiContent::create([
+            'layout'  => 'default',
+            'page'    => 'general-page',
+            'section' => 'general',
+            'fields'  => ['phone' => '+966123456789'],
+        ]);
+
+        UiContent::create([
+            'layout'     => 'default',
+            'page'       => 'social-page',
+            'section'    => 'social',
+            'fields'     => ['link' => 'https://wa.me/%general.phone%'],
+            'sort_order' => 0,
+        ]);
+
+        $link = $this->manager->section('social')->first()->field('link')->getString();
+
+        $this->assertSame('https://wa.me/+966123456789', $link);
+    }
+
+    public function test_any_field_parses_placeholders(): void
+    {
+        app(VariableRegistry::class)->value('site.name', 'My Site');
+
+        $page = new class extends Page { protected string $name = 'test-page'; };
+
+        $section = new class($page::class) extends Section implements Repeatable {
+            public function __construct(string $pageClass) { $this->page = $pageClass; }
+            protected string $name   = 'test-repeatable';
+            protected string $layout = 'default';
+            protected string $page   = '';
+
+            public function fields(): array { return [Field::text('label')]; }
+        };
+
+        $this->pages->register($page);
+        $this->sections->register($section);
+
+        UiContent::create([
+            'layout'     => 'default',
+            'page'       => 'test-page',
+            'section'    => 'test-repeatable',
+            'fields'     => ['label' => 'Visit %site.name%'],
+            'sort_order' => 0,
+        ]);
+
+        $view  = $this->manager->section('test-repeatable');
+        $label = $view->first()->field('label')->getString();
+
+        $this->assertSame('Visit My Site', $label);
+    }
+
+    public function test_all_fields_parse_placeholders_regardless_of_has_variable(): void
     {
         app(VariableRegistry::class)->value('site.name', 'My Site');
 
@@ -190,8 +465,7 @@ final class UiManagerTest extends TestCase
         $view  = $this->manager->section('test-repeatable');
         $label = $view->first()->field('label')->getString();
 
-        // %site.name% must NOT be replaced inside repeatable items
-        $this->assertSame('Visit %site.name%', $label);
+        $this->assertSame('Visit My Site', $label);
     }
 
     // ------------------------------------------------------------------ image defaults

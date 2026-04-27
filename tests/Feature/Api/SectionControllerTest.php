@@ -145,6 +145,76 @@ final class SectionControllerTest extends TestCase
 
     // ------------------------------------------------------------------ repeatable
 
+    public function test_repeatable_section_returns_default_items_when_db_is_empty(): void
+    {
+        $sectionWithDefaults = new class extends Section implements Repeatable {
+            protected string $name    = 'social';
+            protected string $layout  = 'default';
+            protected string $page    = 'home';
+
+            public function fields(): array
+            {
+                return [Field::text('label'), Field::text('url')];
+            }
+
+            public function default(): array
+            {
+                return [
+                    ['label' => 'Facebook', 'url' => 'https://facebook.com'],
+                    ['label' => 'Twitter',  'url' => 'https://twitter.com'],
+                ];
+            }
+        };
+
+        $this->app->make(SectionRegistry::class)->register($sectionWithDefaults);
+
+        $response = $this->getJson($this->apiUrl('pages/home/sections/social'));
+
+        $response->assertOk()
+            ->assertJsonPath('data.repeatable', true)
+            ->assertJsonCount(2, 'data.items')
+            ->assertJsonPath('data.items.0.fields.label', 'Facebook')
+            ->assertJsonPath('data.items.1.fields.label', 'Twitter')
+            ->assertJsonPath('data.items.0.id', null)
+            ->assertJsonPath('data.items.0.sort_order', 0)
+            ->assertJsonPath('data.items.1.sort_order', 1);
+    }
+
+    public function test_repeatable_section_db_items_take_precedence_over_defaults(): void
+    {
+        $sectionWithDefaults = new class extends Section implements Repeatable {
+            protected string $name    = 'social';
+            protected string $layout  = 'default';
+            protected string $page    = 'home';
+
+            public function fields(): array
+            {
+                return [Field::text('label')];
+            }
+
+            public function default(): array
+            {
+                return [['label' => 'Default']];
+            }
+        };
+
+        $this->app->make(SectionRegistry::class)->register($sectionWithDefaults);
+
+        UiContent::create([
+            'layout'     => 'default',
+            'page'       => 'home',
+            'section'    => 'social',
+            'fields'     => ['label' => 'DB Item'],
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->getJson($this->apiUrl('pages/home/sections/social'));
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.fields.label', 'DB Item');
+    }
+
     public function test_repeatable_section_crud(): void
     {
         $this->postJson($this->apiUrl('pages/home/sections/links/items'), [

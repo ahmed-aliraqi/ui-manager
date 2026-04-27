@@ -105,7 +105,7 @@ abstract class BaseField
     }
 
     /**
-     * Enable the variable picker UI for this field in the dashboard.
+     * Mark this field's value as a variable source — e.g. %general.phone% becomes usable elsewhere.
      */
     public function hasVariable(): static
     {
