@@ -1,10 +1,10 @@
 <template>
-  <div class="space-y-1.5">
-    <!-- Label -->
-    <div class="flex items-center justify-between">
-      <label :for="fieldId" class="text-sm font-medium text-foreground">
+  <div class="mb-3">
+    <!-- Label row -->
+    <div class="d-flex align-items-center justify-content-between mb-1">
+      <label :for="fieldId" class="fw-medium mb-0" style="font-size:inherit">
         {{ field.label }}
-        <span v-if="isRequired" class="text-destructive ml-0.5">*</span>
+        <span v-if="isRequired" class="text-danger ms-1">*</span>
       </label>
 
       <!-- Variable copy: single format -->
@@ -12,34 +12,38 @@
         v-if="variableFormats.length === 1"
         type="button"
         @click="copyFormat(variableFormats[0])"
-        class="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+        class="btn btn-link btn-sm p-0 d-inline-flex align-items-center gap-1 text-decoration-none"
+        style="font-size:.75rem"
         :title="`Copy: ${variableFormats[0]}`"
       >
-        <CopyIcon class="w-3 h-3" />
-        <code class="font-mono">{{ variableFormats[0] }}</code>
+        <CopyIcon style="width:11px;height:11px" />
+        <code class="text-primary" style="font-size:.7rem">{{ variableFormats[0] }}</code>
       </button>
 
       <!-- Variable copy: multiple formats — dropdown -->
-      <div v-else-if="variableFormats.length > 1" class="relative" ref="dropdownRef">
+      <div v-else-if="variableFormats.length > 1" class="position-relative" ref="dropdownRef">
         <button
           type="button"
           @click="showDropdown = !showDropdown"
-          class="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+          class="btn btn-link btn-sm p-0 d-inline-flex align-items-center gap-1 text-decoration-none"
+          style="font-size:.75rem"
         >
-          <CopyIcon class="w-3 h-3" />
+          <CopyIcon style="width:11px;height:11px" />
           <span>Variables</span>
-          <ChevronDownIcon class="w-3 h-3" />
+          <ChevronDownIcon style="width:11px;height:11px" />
         </button>
         <div
           v-if="showDropdown"
-          class="absolute right-0 top-full mt-1 bg-popover border rounded-md shadow-lg z-50 py-1 min-w-max"
+          class="uim-dropdown-menu"
+          style="top:100%;right:0;left:auto;min-width:max-content"
         >
           <button
             v-for="fmt in variableFormats"
             :key="fmt"
             type="button"
             @click="copyFormat(fmt); showDropdown = false"
-            class="w-full px-3 py-1.5 text-left text-xs font-mono hover:bg-muted transition-colors"
+            class="uim-dropdown-item"
+            style="font-family:monospace;font-size:.75rem;padding:.25rem .75rem"
           >
             {{ fmt }}
           </button>
@@ -47,27 +51,22 @@
       </div>
     </div>
 
-    <!-- Translatable field: render locale tabs + input per locale -->
-    <div v-if="field.translatable" class="border rounded-md overflow-hidden">
-      <!-- Locale tab bar -->
-      <div class="flex border-b bg-muted/40">
+    <!-- Translatable field: Bootstrap 5 nav-tabs + input per locale -->
+    <div v-if="field.translatable" class="border rounded overflow-hidden">
+      <div class="uim-nav-tabs" style="background:#f8f9fa;padding:.375rem .5rem;border-bottom:1px solid #dee2e6">
         <button
           v-for="locale in locales"
           :key="locale"
           type="button"
           @click="activeLocale = locale"
-          :class="[
-            'px-3 py-1.5 text-xs font-medium uppercase tracking-wide transition-colors',
-            activeLocale === locale
-              ? 'bg-background text-foreground border-b-2 border-primary -mb-px'
-              : 'text-muted-foreground hover:text-foreground',
-          ]"
+          class="uim-nav-link text-uppercase"
+          :class="{ active: activeLocale === locale }"
+          style="font-size:.7rem;letter-spacing:.05em;padding:.35rem .75rem"
         >
           {{ locale }}
         </button>
       </div>
-      <!-- Input for the active locale -->
-      <div class="p-3">
+      <div class="p-2">
         <component
           :is="fieldComponent"
           :id="fieldId + '-' + activeLocale"
@@ -88,14 +87,11 @@
       @update:modelValue="$emit('update:modelValue', $event)"
     />
 
-    <!-- Help text -->
-    <p v-if="field.help" class="text-xs text-muted-foreground">{{ field.help }}</p>
-
-    <!-- Validation error -->
-    <p v-if="error" role="alert" class="text-xs text-destructive flex items-center gap-1 mt-0.5">
-      <AlertCircleIcon class="w-3 h-3 shrink-0" />
+    <div v-if="field.help" class="uim-form-text">{{ field.help }}</div>
+    <div v-if="error" class="uim-invalid-feedback">
+      <AlertCircleIcon style="width:12px;height:12px;flex-shrink:0" />
       {{ error }}
-    </p>
+    </div>
   </div>
 </template>
 
@@ -131,10 +127,8 @@ const activeLocale = ref(defaultLocale)
 const sectionName = inject('sectionName', 'section')
 const fieldId = computed(() => `field-${sectionName}-${props.field.name}`)
 const isRequired = computed(() => props.field.rules?.includes('required'))
-
 const variableFormats = computed(() => props.field.variable_formats ?? [])
 
-// Dropdown state
 const showDropdown = ref(false)
 const dropdownRef = ref(null)
 
@@ -147,12 +141,9 @@ function handleOutsideClick(e) {
 onMounted(() => document.addEventListener('click', handleOutsideClick, true))
 onUnmounted(() => document.removeEventListener('click', handleOutsideClick, true))
 
-// Current locale value from the locale-keyed object stored in modelValue.
 const localeValue = computed(() => {
   const val = props.modelValue
-  if (val && typeof val === 'object' && !Array.isArray(val)) {
-    return val[activeLocale.value] ?? ''
-  }
+  if (val && typeof val === 'object' && !Array.isArray(val)) return val[activeLocale.value] ?? ''
   return typeof val === 'string' ? val : ''
 })
 

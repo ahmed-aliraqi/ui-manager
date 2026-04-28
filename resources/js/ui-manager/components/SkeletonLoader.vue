@@ -1,11 +1,11 @@
 <template>
-  <div :class="['space-y-6', wrapperClass]" aria-busy="true" aria-label="Loading…">
-    <div v-for="i in count" :key="i" class="space-y-1.5">
-      <div class="h-4 rounded bg-muted animate-pulse" :style="{ width: labelWidth(i) }" />
-      <div class="h-9 w-full rounded bg-muted animate-pulse" />
+  <div :class="wrapperClass" aria-busy="true" aria-label="Loading…">
+    <div v-for="i in count" :key="i" class="mb-3 placeholder-glow">
+      <div class="placeholder rounded mb-1" :style="{ width: labelWidth(i), height: '0.85rem' }" />
+      <div class="placeholder rounded w-100" style="height: 2.25rem" />
     </div>
-    <div class="flex gap-3 pt-2 border-t">
-      <div class="h-9 w-24 rounded bg-muted animate-pulse" />
+    <div class="placeholder-glow">
+      <div class="placeholder rounded" style="width: 6rem; height: 2.25rem" />
     </div>
   </div>
 </template>

@@ -1,19 +1,19 @@
 <template>
-  <div class="rounded-md border border-input bg-background overflow-hidden">
+  <div class="border rounded overflow-hidden">
     <!-- Toolbar -->
-    <div class="flex flex-wrap gap-0.5 p-1.5 border-b bg-muted/30">
+    <div class="d-flex flex-wrap gap-1 p-2 border-bottom bg-light">
       <button
         v-for="btn in toolbar"
         :key="btn.action"
         type="button"
         @click="btn.fn()"
         :class="[
-          'p-1.5 rounded text-sm hover:bg-muted transition-colors',
-          btn.active?.() ? 'bg-muted text-foreground' : 'text-muted-foreground'
+          'btn btn-sm btn-light p-1',
+          btn.active?.() ? 'btn-secondary' : ''
         ]"
         :title="btn.label"
       >
-        <component :is="btn.icon" class="w-3.5 h-3.5" />
+        <component :is="btn.icon" style="width:0.875rem;height:0.875rem;" />
       </button>
     </div>
 
@@ -23,7 +23,8 @@
       contenteditable="true"
       @input="onInput"
       @keydown="onKeydown"
-      class="min-h-[120px] p-3 text-sm outline-none prose prose-sm max-w-none"
+      class="p-3 bg-white"
+      style="min-height:120px;outline:none;"
       v-html="localHtml"
     />
   </div>

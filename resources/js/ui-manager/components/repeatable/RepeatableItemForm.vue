@@ -1,9 +1,6 @@
 <template>
-  <form @submit.prevent="handleSave" class="space-y-4" ref="formRef">
-    <div
-      v-for="field in definition.fields"
-      :key="field.name"
-    >
+  <form @submit.prevent="handleSave" ref="formRef">
+    <div v-for="field in definition.fields" :key="field.name">
       <FieldRenderer
         :field="field"
         :modelValue="form[field.name]"
@@ -12,21 +9,22 @@
       />
     </div>
 
-    <div class="flex items-center gap-2 pt-2 border-t">
+    <div class="d-flex align-items-center gap-2 pt-2 border-top mt-2">
       <button
         type="submit"
         :disabled="saving"
-        class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2 px-3"
+        style="border-radius:.375rem"
       >
-        <SaveIcon v-if="!saving" class="w-3.5 h-3.5" />
-        <LoaderIcon v-else class="w-3.5 h-3.5 animate-spin" />
+        <span v-if="saving" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+        <SaveIcon v-else style="width:.875rem;height:.875rem;" />
         Save
       </button>
       <button
         v-if="isBlankNew"
         type="button"
         @click="$emit('cancel')"
-        class="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground border transition-colors"
+        class="btn btn-outline-secondary btn-sm"
       >
         Cancel
       </button>
@@ -36,7 +34,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, provide } from 'vue'
-import { SaveIcon, LoaderIcon } from 'lucide-vue-next'
+import { SaveIcon } from 'lucide-vue-next'
 import { useUiStore } from '../../stores/ui.js'
 import { useToast } from '../../composables/useToast.js'
 import { useLocales } from '../../composables/useConfig.js'
@@ -75,14 +73,12 @@ function initFieldValue(fieldDef, storedValue) {
     return storedValue ?? fieldDef.default ?? null
   }
 
-  // Stored value is already a locale-keyed object
   if (storedValue && typeof storedValue === 'object' && !Array.isArray(storedValue)) {
     const obj = {}
     locales.forEach(l => { obj[l] = storedValue[l] ?? '' })
     return obj
   }
 
-  // Fall back to field default
   const dflt = fieldDef.default
   const obj = {}
   if (dflt && typeof dflt === 'object' && !Array.isArray(dflt)) {
@@ -150,7 +146,6 @@ async function handleSave() {
   }
 }
 
-// Ctrl+S / Cmd+S only when this form is focused
 function onKeyDown(e) {
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     if (formRef.value?.contains(document.activeElement)) {

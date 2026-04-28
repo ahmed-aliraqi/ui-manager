@@ -63,18 +63,10 @@ class UiManagerServiceProvider extends ServiceProvider
     {
         $routeConfig = config('ui-manager.routes');
 
-        // JSON API routes must be registered BEFORE the SPA catch-all
-        // so that /ui-manager/api/* requests don't fall through to the view.
         $this->app['router']
             ->middleware($routeConfig['api_middleware'])
             ->prefix($routeConfig['api_prefix'])
             ->group(__DIR__ . '/../routes/api.php');
-
-        // SPA catch-all web route (must come last)
-        $this->app['router']
-            ->middleware($routeConfig['middleware'])
-            ->prefix($routeConfig['prefix'])
-            ->group(__DIR__ . '/../routes/web.php');
     }
 
     private function registerBladeDirectives(): void
@@ -89,6 +81,14 @@ class UiManagerServiceProvider extends ServiceProvider
         // @uiSection('section') ... @enduiSection
         Blade::directive('uiSection', function (string $expression): string {
             return "<?php \$__uiSection = ui({$expression}); ?>";
+        });
+
+        // @uiManagerPanel               — embed the panel with default config
+        // @uiManagerPanel(['locales' => ['en','ar']])  — with overrides
+        Blade::directive('uiManagerPanel', function (string $expression): string {
+            $opts = trim($expression) ? $expression : '[]';
+
+            return "<?php echo view('ui-manager::panel', ['uiPanelOptions' => {$opts}])->render(); ?>";
         });
     }
 

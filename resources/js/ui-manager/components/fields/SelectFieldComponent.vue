@@ -1,37 +1,38 @@
 <template>
   <div>
     <!-- Multi-select -->
-    <div v-if="field.multiple" class="space-y-1.5">
-      <label
+    <div v-if="field.multiple">
+      <div
         v-for="opt in field.options"
         :key="opt.value"
-        class="flex items-center gap-2 text-sm cursor-pointer"
+        class="uim-form-check uim-form-check-inline"
       >
         <input
           type="checkbox"
+          :id="`${id}-${opt.value}`"
           :value="opt.value"
           :checked="Array.isArray(modelValue) && modelValue.includes(opt.value)"
           @change="toggleMulti(opt.value, $event.target.checked)"
-          class="rounded border-input"
+          class="uim-form-check-input"
         />
-        {{ opt.label }}
-      </label>
+        <label :for="`${id}-${opt.value}`" class="uim-form-check-label">{{ opt.label }}</label>
+      </div>
     </div>
 
     <!-- Single select with optional search -->
-    <div v-else class="relative">
+    <div v-else>
       <input
         v-if="field.searchable"
         v-model="search"
         type="text"
         placeholder="Search…"
-        class="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm mb-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        class="uim-form-control uim-form-control-sm" style="margin-bottom:.5rem"
       />
       <select
         :id="id"
         :value="modelValue"
         @change="$emit('update:modelValue', $event.target.value)"
-        class="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        class="uim-form-select"
       >
         <option value="">— Select —</option>
         <option

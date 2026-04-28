@@ -1,12 +1,13 @@
 <template>
   <div>
     <!-- Items list -->
-    <div v-if="items.length" class="space-y-1 mb-4">
+    <div v-if="items.length" class="mb-3">
       <template v-for="(item, idx) in items" :key="itemKey(item, idx)">
-        <!-- Drop insertion line ABOVE the item being dragged over -->
+        <!-- Drop indicator above -->
         <div
           v-if="dropTargetIdx === idx && dragIndex !== null && dragIndex !== idx"
-          class="h-0.5 rounded bg-primary/60 mx-2 my-1 transition-all"
+          class="my-1"
+          style="height:2px;border-radius:2px;background:var(--bs-primary,#0d6efd)"
         />
 
         <div
@@ -15,45 +16,48 @@
           @dragover.prevent="onDragOver(idx)"
           @dragleave="onDragLeave"
           @dragend="onDragEnd"
-          :class="[
-            'rounded-xl border bg-card overflow-hidden transition-all duration-150',
-            dragIndex === idx ? 'opacity-40 scale-[0.98]' : 'opacity-100',
-          ]"
+          class="card mb-2"
+          :style="dragIndex === idx ? 'opacity:.3' : ''"
         >
-          <div class="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b">
-            <GripVerticalIcon class="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
-            <span class="text-sm font-medium flex-1 truncate">
+          <!-- Card header -->
+          <div class="card-header d-flex align-items-center gap-2 py-2 px-3">
+            <GripVerticalIcon
+              class="text-muted"
+              style="width:1rem;height:1rem;cursor:grab;flex-shrink:0"
+            />
+            <span class="small fw-medium flex-grow-1 text-truncate">
               {{ itemLabel(item, idx) }}
             </span>
             <span
               v-if="item.id === null"
-              class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0"
+              class="badge text-bg-warning me-1"
+              style="font-size:.65rem"
             >default</span>
             <button
               type="button"
               @click="toggleExpand(itemKey(item, idx))"
-              class="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              class="btn btn-link btn-sm p-0 text-muted"
               :aria-expanded="expanded.has(itemKey(item, idx))"
               :aria-label="expanded.has(itemKey(item, idx)) ? 'Collapse' : 'Expand'"
             >
               <ChevronDownIcon
-                class="w-4 h-4 transition-transform duration-150"
-                :class="{ 'rotate-180': expanded.has(itemKey(item, idx)) }"
+                style="width:1rem;height:1rem;transition:transform .15s"
+                :style="expanded.has(itemKey(item, idx)) ? 'transform:rotate(180deg)' : ''"
               />
             </button>
             <button
               v-if="item.id !== null"
               type="button"
               @click="deleteItem(item, idx)"
-              class="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+              class="btn btn-link btn-sm p-0 text-muted"
               aria-label="Delete item"
             >
-              <Trash2Icon class="w-4 h-4" />
+              <Trash2Icon style="width:1rem;height:1rem;" />
             </button>
           </div>
 
           <Transition name="slide">
-            <div v-if="expanded.has(itemKey(item, idx))" class="p-4">
+            <div v-if="expanded.has(itemKey(item, idx))" class="card-body p-3">
               <RepeatableItemForm
                 :definition="definition"
                 :item="item"
@@ -66,39 +70,43 @@
         </div>
       </template>
 
-      <!-- Drop insertion line at the END of the list -->
+      <!-- Drop indicator at end -->
       <div
         v-if="dropTargetIdx === items.length && dragIndex !== null"
-        class="h-0.5 rounded bg-primary/60 mx-2 my-1 transition-all"
+        class="my-1"
+        style="height:2px;border-radius:2px;background:var(--bs-primary,#0d6efd)"
       />
     </div>
 
-    <div v-else class="rounded-xl border border-dashed p-8 text-center text-muted-foreground mb-4">
-      <ListIcon class="w-6 h-6 mx-auto mb-2 opacity-40" />
-      <p class="text-sm">No items yet — add your first one below.</p>
+    <!-- Empty state -->
+    <div v-else class="border border-dashed rounded p-5 text-center text-muted mb-3">
+      <ListIcon class="mb-2" style="width:1.5rem;height:1.5rem;opacity:.4" />
+      <p class="small mb-0">No items yet — add your first one below.</p>
     </div>
 
     <!-- Add new item -->
     <button
       type="button"
       @click="showAddForm = !showAddForm"
-      class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+      class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
     >
-      <PlusIcon class="w-4 h-4" />
+      <PlusIcon style="width:1rem;height:1rem;" />
       Add item
     </button>
 
     <Transition name="slide">
-      <div v-if="showAddForm" class="mt-4 rounded-xl border bg-card p-4">
-        <p class="text-sm font-medium mb-4">New item</p>
-        <RepeatableItemForm
-          :definition="definition"
-          :item="null"
-          :page="page"
-          :section="section"
-          @saved="onNewItemSaved"
-          @cancel="showAddForm = false"
-        />
+      <div v-if="showAddForm" class="card mt-3">
+        <div class="card-body p-3">
+          <p class="small fw-medium mb-3">New item</p>
+          <RepeatableItemForm
+            :definition="definition"
+            :item="null"
+            :page="page"
+            :section="section"
+            @saved="onNewItemSaved"
+            @cancel="showAddForm = false"
+          />
+        </div>
       </div>
     </Transition>
   </div>
@@ -127,7 +135,6 @@ const expanded  = reactive(new Set())
 const showAddForm = ref(false)
 const loading   = ref(false)
 
-// Drag-and-drop state
 const dragIndex     = ref(null)
 const dropTargetIdx = ref(null)
 
@@ -202,8 +209,6 @@ function onNewItemSaved(newItem) {
   showAddForm.value = false
 }
 
-// ------------------------------------------------------------------ drag & drop
-
 function onDragStart(idx, e) {
   dragIndex.value     = idx
   dropTargetIdx.value = idx
@@ -216,19 +221,18 @@ function onDragOver(targetIdx) {
 }
 
 function onDragLeave() {
-  // Keep the last known target — avoids flickering on child element boundaries
+  // Intentionally empty — keeps last known target to avoid flicker
 }
 
 async function onDragEnd() {
-  const from   = dragIndex.value
-  const to     = dropTargetIdx.value
+  const from = dragIndex.value
+  const to   = dropTargetIdx.value
 
   dragIndex.value     = null
   dropTargetIdx.value = null
 
   if (from === null || to === null || from === to) return
 
-  // Move item in the local array
   const arr = [...items.value]
   const [moved] = arr.splice(from, 1)
   arr.splice(to > from ? to - 1 : to, 0, moved)

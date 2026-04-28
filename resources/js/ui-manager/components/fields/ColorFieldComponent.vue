@@ -1,10 +1,11 @@
 <template>
-  <div class="flex items-center gap-3">
+  <div class="d-flex align-items-center gap-2">
     <!-- Color swatch + native picker -->
-    <div class="relative">
+    <div class="position-relative">
       <div
         :style="{ backgroundColor: displayValue || '#000000' }"
-        class="w-10 h-10 rounded-md border border-input cursor-pointer shadow-sm ring-offset-background hover:opacity-90 transition-opacity"
+        class="border rounded cursor-pointer"
+        style="width:2.5rem;height:2.5rem;"
         @click="pickerRef?.click()"
         :title="displayValue"
       />
@@ -13,7 +14,7 @@
         :type="field.alpha ? 'color' : 'color'"
         :value="displayValue || '#000000'"
         @input="onPickerChange($event.target.value)"
-        class="sr-only"
+        class="visually-hidden"
         aria-hidden="true"
       />
     </div>
@@ -27,7 +28,8 @@
       @blur="normalizeHex"
       placeholder="#000000"
       maxlength="7"
-      class="w-28 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      class="uim-form-control uim-form-control-sm font-monospace"
+      style="width:8rem"
     />
 
     <!-- Clear button -->
@@ -35,7 +37,7 @@
       v-if="modelValue"
       type="button"
       @click="$emit('update:modelValue', null)"
-      class="text-muted-foreground hover:text-destructive transition-colors text-xs"
+      class="btn btn-link btn-sm text-danger p-0"
     >
       Clear
     </button>

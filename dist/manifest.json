@@ -1,59 +1,11 @@
 {
-  "_RepeatableSection-CxC_Lan3.css": {
-    "file": "assets/RepeatableSection-CxC_Lan3.css",
-    "src": "_RepeatableSection-CxC_Lan3.css"
-  },
-  "_RepeatableSection-DVc558Q5.js": {
-    "file": "chunks/RepeatableSection-DVc558Q5.js",
-    "name": "RepeatableSection",
-    "imports": [
-      "resources/js/ui-manager/app.js"
-    ],
-    "css": [
-      "assets/RepeatableSection-CxC_Lan3.css"
-    ]
-  },
-  "resources/js/ui-manager/app.js": {
-    "file": "app-Cs4VMceJ.js",
-    "name": "app",
-    "src": "resources/js/ui-manager/app.js",
+  "resources/js/ui-manager/panel.js": {
+    "file": "panel-CI5DGwuN.js",
+    "name": "panel",
+    "src": "resources/js/ui-manager/panel.js",
     "isEntry": true,
-    "dynamicImports": [
-      "resources/js/ui-manager/pages/PagesIndex.vue",
-      "resources/js/ui-manager/pages/PageShow.vue",
-      "resources/js/ui-manager/pages/SectionEdit.vue"
-    ],
     "css": [
-      "assets/app-B6mDPv4J.css"
-    ]
-  },
-  "resources/js/ui-manager/pages/PageShow.vue": {
-    "file": "chunks/PageShow-DwHWIImR.js",
-    "name": "PageShow",
-    "src": "resources/js/ui-manager/pages/PageShow.vue",
-    "isDynamicEntry": true,
-    "imports": [
-      "resources/js/ui-manager/app.js",
-      "_RepeatableSection-DVc558Q5.js"
-    ]
-  },
-  "resources/js/ui-manager/pages/PagesIndex.vue": {
-    "file": "chunks/PagesIndex-CJ_GLmvh.js",
-    "name": "PagesIndex",
-    "src": "resources/js/ui-manager/pages/PagesIndex.vue",
-    "isDynamicEntry": true,
-    "imports": [
-      "resources/js/ui-manager/app.js"
-    ]
-  },
-  "resources/js/ui-manager/pages/SectionEdit.vue": {
-    "file": "chunks/SectionEdit-DjjBjEp1.js",
-    "name": "SectionEdit",
-    "src": "resources/js/ui-manager/pages/SectionEdit.vue",
-    "isDynamicEntry": true,
-    "imports": [
-      "resources/js/ui-manager/app.js",
-      "_RepeatableSection-DVc558Q5.js"
+      "assets/panel-Dqcn94IE.css"
     ]
   }
 }

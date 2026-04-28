@@ -1,0 +1,73 @@
+// Bootstrap 5 — scoped under .uim-bs
+// All component styles are isolated to elements that have this class.
+// Bootstrap's :root CSS vars (--bs-*) remain global but don't conflict
+// with Tailwind's --color-* or AdminLTE variables.
+// Reboot is intentionally excluded to avoid overriding host-page body/html styles.
+
+// ── 1. Setup (no CSS output) ──────────────────────────────────────────────────
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+
+// ── 2. All component CSS scoped under .uim-bs ─────────────────────────────────
+.uim-bs {
+  // Reset box-model inside the scope
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  // Base typography (subset of reboot, scoped)
+  font-family: var(--bs-body-font-family);
+  font-size: var(--bs-body-font-size);
+  font-weight: var(--bs-body-font-weight);
+  line-height: var(--bs-body-line-height);
+  color: var(--bs-body-color);
+
+  @import "bootstrap/scss/utilities";
+  // Reboot is imported here (not globally) so its body/html selectors become
+  // .uim-bs body / .uim-bs html — dead selectors that never match, keeping
+  // host-page styles intact. The h1-h6 selectors it defines are needed by type.scss.
+  @import "bootstrap/scss/reboot";
+  @import "bootstrap/scss/type";
+  @import "bootstrap/scss/images";
+  @import "bootstrap/scss/containers";
+  @import "bootstrap/scss/grid";
+  @import "bootstrap/scss/tables";
+  @import "bootstrap/scss/forms";
+  @import "bootstrap/scss/buttons";
+  @import "bootstrap/scss/transitions";
+  @import "bootstrap/scss/dropdown";
+  @import "bootstrap/scss/button-group";
+  @import "bootstrap/scss/nav";
+  @import "bootstrap/scss/navbar";
+  @import "bootstrap/scss/card";
+  @import "bootstrap/scss/accordion";
+  @import "bootstrap/scss/breadcrumb";
+  @import "bootstrap/scss/pagination";
+  @import "bootstrap/scss/badge";
+  @import "bootstrap/scss/alert";
+  @import "bootstrap/scss/progress";
+  @import "bootstrap/scss/list-group";
+  @import "bootstrap/scss/close";
+  @import "bootstrap/scss/toasts";
+  @import "bootstrap/scss/modal";
+  @import "bootstrap/scss/tooltip";
+  @import "bootstrap/scss/popover";
+  @import "bootstrap/scss/spinners";
+  @import "bootstrap/scss/offcanvas";
+  @import "bootstrap/scss/placeholders";
+  @import "bootstrap/scss/helpers";
+  @import "bootstrap/scss/utilities/api";
+}
+
+// Modal backdrop needs to be outside .uim-bs but scoped to our modals
+.uim-bs-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+  background-color: rgba(0, 0, 0, 0.5);
+}

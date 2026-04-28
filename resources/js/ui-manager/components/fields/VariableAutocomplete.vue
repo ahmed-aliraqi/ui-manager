@@ -1,23 +1,22 @@
 <template>
   <div
     v-if="active && showDropdown && filtered.length"
-    class="absolute left-0 right-0 top-full z-50 mt-1 rounded-md border bg-popover text-popover-foreground shadow-md overflow-hidden"
+    class="uim-dropdown-menu mt-1"
+    style="left:0;right:0;min-width:0"
   >
-    <div class="p-1">
-      <button
-        v-for="(v, idx) in filtered"
-        :key="v.key"
-        :ref="el => { if (el) itemRefs[idx] = el }"
-        type="button"
-        @mousedown.prevent="insert(v.placeholder)"
-        @mousemove="selectedIndex = idx"
-        class="w-full text-left px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-2"
-        :class="idx === selectedIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'"
-      >
-        <code class="text-primary font-mono">{{ v.placeholder }}</code>
-        <span class="text-muted-foreground truncate">{{ v.key }}</span>
-      </button>
-    </div>
+    <button
+      v-for="(v, idx) in filtered"
+      :key="v.key"
+      :ref="el => { if (el) itemRefs[idx] = el }"
+      type="button"
+      @mousedown.prevent="insert(v.placeholder)"
+      @mousemove="selectedIndex = idx"
+      class="uim-dropdown-item d-flex align-items-center gap-2 py-1"
+      :class="idx === selectedIndex ? 'active' : ''"
+    >
+      <code class="text-primary font-monospace">{{ v.placeholder }}</code>
+      <span class="text-muted text-truncate">{{ v.key }}</span>
+    </button>
   </div>
 </template>
 

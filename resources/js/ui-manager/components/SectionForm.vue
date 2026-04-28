@@ -1,14 +1,9 @@
 <template>
-  <div class="max-w-2xl">
-    <!-- Loading skeleton while fetching section data -->
+  <div>
     <SkeletonLoader v-if="loading" :count="definition.fields.length || 3" />
 
-    <form v-else @submit.prevent="handleSave" class="space-y-6" ref="formRef">
-      <div
-        v-for="field in definition.fields"
-        :key="field.name"
-        class="space-y-1.5"
-      >
+    <form v-else @submit.prevent="handleSave" ref="formRef">
+      <div v-for="field in definition.fields" :key="field.name">
         <FieldRenderer
           :field="field"
           :modelValue="form[field.name]"
@@ -17,21 +12,19 @@
         />
       </div>
 
-      <div class="flex items-center gap-3 pt-2 border-t">
+      <div class="d-flex align-items-center gap-2 pt-3 border-top mt-2">
         <button
           type="submit"
           :disabled="saving"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2 px-3"
+          style="border-radius:.375rem"
         >
-          <SaveIcon v-if="!saving" class="w-4 h-4" />
-          <LoaderIcon v-else class="w-4 h-4 animate-spin" />
+          <span v-if="saving" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+          <SaveIcon v-else style="width:1rem;height:1rem;" />
           {{ saving ? 'Saving…' : 'Save changes' }}
         </button>
 
-        <span
-          v-if="isDirty"
-          class="text-xs text-muted-foreground"
-        >Unsaved changes</span>
+        <span v-if="isDirty" class="text-muted small">Unsaved changes</span>
       </div>
     </form>
   </div>
@@ -39,7 +32,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, provide, watch } from 'vue'
-import { SaveIcon, LoaderIcon } from 'lucide-vue-next'
+import { SaveIcon } from 'lucide-vue-next'
 import { useUiStore } from '../stores/ui.js'
 import { useToast } from '../composables/useToast.js'
 import { api } from '../composables/useApi.js'
@@ -65,7 +58,6 @@ const loading               = ref(true)
 const isDirty               = ref(false)
 const formRef               = ref(null)
 
-// Suppress the first watch trigger that fires during initialisation
 let initialising = true
 
 watch(form, () => {
@@ -82,21 +74,17 @@ function initFieldValue(fieldDef, storedValue) {
     return storedValue ?? fieldDef.default ?? null
   }
 
-  // DB value takes priority — already a locale-keyed object
   if (storedValue && typeof storedValue === 'object' && !Array.isArray(storedValue)) {
     const obj = {}
     locales.forEach(l => { obj[l] = storedValue[l] ?? '' })
     return obj
   }
 
-  // No DB value — fall back to field default
   const dflt = fieldDef.default
   const obj = {}
   if (dflt && typeof dflt === 'object' && !Array.isArray(dflt)) {
-    // Default is already locale-keyed: { en: 'Title', ar: 'العنوان' }
     locales.forEach(l => { obj[l] = dflt[l] ?? '' })
   } else {
-    // Default is a plain string (or null/undefined)
     locales.forEach(l => { obj[l] = l === defaultLocale ? (dflt ?? '') : '' })
   }
   return obj
@@ -162,7 +150,6 @@ async function handleSave() {
   }
 }
 
-// Keyboard shortcut: Ctrl+S / Cmd+S
 function onKeyDown(e) {
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     e.preventDefault()
@@ -170,7 +157,6 @@ function onKeyDown(e) {
   }
 }
 
-// Warn on browser close/refresh when dirty
 function onBeforeUnload(e) {
   if (isDirty.value) {
     e.preventDefault()

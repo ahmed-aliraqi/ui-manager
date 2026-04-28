@@ -1,62 +1,291 @@
-@import "tailwindcss";
+/* ── Tailwind v4 — scoped, no global leakage ──────────────────────────────
+   • preflight is excluded intentionally — it resets body/html globally
+     and would conflict with host dashboards (AdminLTE, Filament, etc.)
+   • utilities are prefixed with "uim-" so class names never clash with
+     Bootstrap or host-app classes
+   ────────────────────────────────────────────────────────────────────── */
 
-@theme {
-  /* Colors — matches shadcn/ui light theme */
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222.2 84% 4.9%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(222.2 84% 4.9%);
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(222.2 84% 4.9%);
-  --color-primary: hsl(221.2 83.2% 53.3%);
-  --color-primary-foreground: hsl(210 40% 98%);
-  --color-secondary: hsl(210 40% 96.1%);
-  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
-  --color-muted: hsl(210 40% 96.1%);
-  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
-  --color-accent: hsl(210 40% 96.1%);
-  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(210 40% 98%);
-  --color-border: hsl(214.3 31.8% 91.4%);
-  --color-input: hsl(214.3 31.8% 91.4%);
-  --color-ring: hsl(221.2 83.2% 53.3%);
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities" prefix(uim-);
 
-  --radius: 0.5rem;
-}
+/* ── Bootstrap 5-equivalent component classes (Tailwind @layer components)
+   Named with the uim- prefix so they never conflict with host-page classes.
+   These apply globally (no .uim-bs scope needed) so they work in both the
+   standalone SPA and in the embedded panel.
+   ─────────────────────────────────────────────────────────────────────── */
+@layer components {
 
-@layer base {
-  * {
-    border-color: theme(--color-border);
+  /* ── Form Control ──────────────────────────────────────────────────── */
+  .uim-form-control {
+    display: block;
+    width: 100%;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: .375rem;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    appearance: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin: 0;
+  }
+  .uim-form-control:focus {
+    color: #212529;
+    background-color: #fff;
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25);
+  }
+  .uim-form-control::placeholder { color: #6c757d; opacity: 1; }
+  .uim-form-control:disabled,
+  .uim-form-control[readonly] { background-color: #e9ecef; opacity: 1; }
+
+  .uim-form-control-sm {
+    min-height: calc(1.5em + .5rem + 2px);
+    padding: .25rem .5rem;
+    font-size: .875rem;
+    border-radius: .25rem;
   }
 
-  body {
-    background-color: theme(--color-background);
-    color: theme(--color-foreground);
+  /* ── Form Select ───────────────────────────────────────────────────── */
+  .uim-form-select {
+    display: block;
+    width: 100%;
+    padding: .375rem 2.25rem .375rem .75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right .75rem center;
+    background-size: 16px 12px;
+    border: 1px solid #ced4da;
+    border-radius: .375rem;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    appearance: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin: 0;
+  }
+  .uim-form-select:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25);
+  }
+  .uim-form-select:disabled { background-color: #e9ecef; pointer-events: none; }
+
+  .uim-form-select-sm {
+    padding-top: .25rem;
+    padding-bottom: .25rem;
+    padding-left: .5rem;
+    font-size: .875rem;
+    border-radius: .25rem;
+  }
+
+  /* ── Form Check (checkbox / radio) ─────────────────────────────────── */
+  .uim-form-check {
+    display: block;
+    min-height: 1.5rem;
+    padding-left: 1.5em;
+    margin-bottom: .125rem;
+    box-sizing: border-box;
+  }
+  .uim-form-check-inline {
+    display: inline-flex;
+    align-items: center;
+    padding-left: 0;
+    margin-right: 1rem;
+  }
+  .uim-form-check-inline .uim-form-check-input {
+    position: static;
+    margin-top: 0;
+    margin-right: .3125em;
+    margin-left: 0;
+  }
+  .uim-form-check-input {
+    width: 1em;
+    height: 1em;
+    margin-top: .25em;
+    vertical-align: top;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    border: 1px solid rgba(0,0,0,.25);
+    appearance: none;
+    border-radius: .25em;
+    cursor: pointer;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    transition: background-color .15s ease-in-out, background-position .15s ease-in-out,
+                border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+  }
+  .uim-form-check-input[type=radio] { border-radius: 50%; }
+  .uim-form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  }
+  .uim-form-check-input[type=radio]:checked {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e");
+  }
+  .uim-form-check-input:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25);
+  }
+  .uim-form-check-label { cursor: pointer; margin-bottom: 0; }
+
+  /* ── Input Group ───────────────────────────────────────────────────── */
+  .uim-input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .uim-input-group > .uim-form-control,
+  .uim-input-group > .uim-form-select {
+    position: relative;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+  }
+  .uim-input-group-text {
+    display: flex;
+    align-items: center;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    text-align: center;
+    white-space: nowrap;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: .375rem;
+    box-sizing: border-box;
+  }
+  .uim-input-group > :not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .uim-input-group > :not(:first-child) {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  /* ── Validation ────────────────────────────────────────────────────── */
+  .uim-form-control.uim-is-invalid,
+  .uim-form-select.uim-is-invalid {
+    border-color: #dc3545;
+  }
+  .uim-form-control.uim-is-invalid:focus,
+  .uim-form-select.uim-is-invalid:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 .25rem rgba(220,53,69,.25);
+  }
+  .uim-invalid-feedback {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    width: 100%;
+    margin-top: .25rem;
+    font-size: .875em;
+    color: #dc3545;
+  }
+  .uim-form-text {
+    display: block;
+    margin-top: .25rem;
+    font-size: .875em;
+    color: #6c757d;
+  }
+
+  /* ── Nav Tabs — Bootstrap 5 nav-pills style (rounded, primary accent) */
+  .uim-nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+  }
+  .uim-nav-tabs > .uim-nav-link {
+    display: inline-block;
+    padding: .375rem .875rem;
+    font-size: .875rem;
+    color: #6c757d;
+    text-decoration: none;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: .375rem;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out;
+  }
+  .uim-nav-tabs > .uim-nav-link:hover {
+    color: #343a40;
+    background-color: #e9ecef;
+  }
+  .uim-nav-tabs > .uim-nav-link.active {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+  }
+
+  /* ── Dropdown item ─────────────────────────────────────────────────── */
+  .uim-dropdown-item {
+    display: block;
+    width: 100%;
+    padding: .25rem 1rem;
+    clear: both;
+    font-weight: 400;
+    color: #212529;
+    text-align: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    background-color: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
+    transition: color .12s ease-in-out, background-color .12s ease-in-out;
+    box-sizing: border-box;
+  }
+  .uim-dropdown-item:hover { color: #1e2125; background-color: #e9ecef; }
+  .uim-dropdown-item.active { color: #fff; background-color: #0d6efd; }
+
+  /* ── Dropdown menu container ───────────────────────────────────────── */
+  .uim-dropdown-menu {
+    position: absolute;
+    z-index: 1050;
+    min-width: 10rem;
+    padding: .5rem 0;
+    color: #212529;
+    text-align: left;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: .375rem;
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+    box-sizing: border-box;
   }
 }
 
-/* Tiptap / contenteditable editor styles */
-[contenteditable].prose {
-  outline: none;
-}
-[contenteditable].prose p {
-  margin-bottom: 0.5rem;
-}
-[contenteditable].prose h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-}
-[contenteditable].prose ul {
-  list-style: disc;
-  padding-left: 1.25rem;
-}
-[contenteditable].prose ol {
-  list-style: decimal;
-  padding-left: 1.25rem;
-}
-[contenteditable].prose a {
-  color: theme(--color-primary);
-  text-decoration: underline;
-}
+/* Tiptap / contenteditable editor (scoped to SPA) */
+#ui-manager-app [contenteditable].prose { outline: none; }
+#ui-manager-app [contenteditable].prose p { margin-bottom: 0.5rem; }
+#ui-manager-app [contenteditable].prose h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; }
+#ui-manager-app [contenteditable].prose ul { list-style: disc; padding-left: 1.25rem; }
+#ui-manager-app [contenteditable].prose ol { list-style: decimal; padding-left: 1.25rem; }
+#ui-manager-app [contenteditable].prose a { color: var(--color-primary); text-decoration: underline; }

@@ -1,21 +1,23 @@
 <template>
-  <div class="space-y-1">
-    <div class="relative">
-      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-        <LinkIcon class="w-3.5 h-3.5" />
-      </span>
-      <input
-        :id="id"
-        type="url"
-        :value="modelValue ?? ''"
-        @input="onInput"
-        @focus="onFocus"
-        @blur="onBlur"
-        @keydown="onKeydown"
-        placeholder="https://example.com"
-        class="w-full h-9 rounded-md border bg-background pl-8 pr-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        :class="urlError ? 'border-destructive focus-visible:ring-destructive' : 'border-input'"
-      />
+  <div>
+    <div class="position-relative">
+      <div class="uim-input-group">
+        <span class="uim-input-group-text">
+          <LinkIcon class="w-3.5 h-3.5" style="width:0.875rem;height:0.875rem;" />
+        </span>
+        <input
+          :id="id"
+          type="url"
+          :value="modelValue ?? ''"
+          @input="onInput"
+          @focus="onFocus"
+          @blur="onBlur"
+          @keydown="onKeydown"
+          placeholder="https://example.com"
+          class="uim-form-control"
+          :class="urlError ? 'uim-is-invalid' : ''"
+        />
+      </div>
       <VariableAutocomplete
         ref="autocompleteRef"
         :value="modelValue"
@@ -23,7 +25,7 @@
         @insert="$emit('update:modelValue', $event)"
       />
     </div>
-    <p v-if="urlError" class="text-xs text-destructive">{{ urlError }}</p>
+    <div v-if="urlError" class="uim-invalid-feedback">{{ urlError }}</div>
   </div>
 </template>
 

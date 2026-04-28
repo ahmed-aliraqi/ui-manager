@@ -1,6 +1,6 @@
 # UI Manager — Laravel Package
 
-A production-ready, class-driven UI management system for Laravel. Define your UI structure in PHP, manage content from a modern SPA dashboard, and render it in Blade with a clean read-only API.
+A production-ready, class-driven UI management system for Laravel. Define your UI structure in PHP, embed the panel into any existing dashboard, and render content in Blade with a clean read-only API.
 
 ---
 
@@ -26,7 +26,7 @@ A production-ready, class-driven UI management system for Laravel. Define your U
 8. [Multi-language / Translatable Fields](#multi-language--translatable-fields)
 9. [Variables System](#variables-system)
 10. [Blade Usage](#blade-usage)
-11. [Dashboard](#dashboard)
+11. [Embedded Panel](#embedded-panel)
 12. [Artisan Commands](#artisan-commands)
 13. [Extending the Package](#extending-the-package)
 14. [Testing](#testing)
@@ -44,7 +44,7 @@ composer require ahmed-aliraqi/ui-manager
 php artisan ui-manager:install
 ```
 
-This single command publishes the config, copies the pre-built dashboard assets to `public/vendor/ui-manager/`, and runs the package migrations (including Spatie Media Library's `media` table).
+This single command publishes the config, copies the pre-built panel assets to `public/vendor/ui-manager/`, and runs the package migrations (including Spatie Media Library's `media` table).
 
 Use `--force` to overwrite previously published files:
 
@@ -69,22 +69,10 @@ After installation, `config/ui-manager.php` is available in your application:
 ```php
 return [
 
-    // Locales the dashboard renders input tabs for.
     'locales'        => ['en'],
     'default_locale' => 'en',
 
-    'dashboard' => [
-        'title'       => 'UI Manager',
-        'home_button' => [
-            'display' => false,
-            'uri'     => '/dashboard',
-            'label'   => 'Home',
-        ],
-    ],
-
     'routes' => [
-        'prefix'         => 'ui-manager',           // dashboard at /ui-manager
-        'middleware'     => ['web'],
         'api_prefix'     => 'ui-manager/api',
         'api_middleware' => ['web'],
     ],
@@ -115,13 +103,12 @@ return [
 ];
 ```
 
-### Protecting the dashboard
+### Protecting the API
 
-Add your auth middleware to the routes keys:
+Add your auth middleware to the API route config:
 
 ```php
 'routes' => [
-    'middleware'     => ['web', 'auth'],
     'api_middleware' => ['web', 'auth'],
 ],
 ```
@@ -160,7 +147,7 @@ class About extends Page
 | Property   | Type   | Default | Description                          |
 |------------|--------|---------|--------------------------------------|
 | `$name`    | string | —       | Unique slug used in routes and cache |
-| `$visible` | bool   | `true`  | Show in the dashboard sidebar        |
+| `$visible` | bool   | `true`  | Show in the panel sidebar            |
 | `$order`   | int    | `0`     | Sidebar sort position                |
 
 ---
@@ -210,7 +197,7 @@ class Banner extends Section
 | `$name`    | string | —           | Unique slug within the page            |
 | `$page`    | string | —           | Fully-qualified Page class or slug     |
 | `$layout`  | string | `'default'` | Layout name                            |
-| `$visible` | bool   | `true`       | Show in the dashboard                 |
+| `$visible` | bool   | `true`       | Show in the panel                     |
 | `$order`   | int    | `0`          | Sort position in page tabs            |
 | `$label`   | string | `''`         | Override the auto-generated tab label |
 
@@ -258,7 +245,7 @@ Without a layout argument, the first registered variant is returned (same as bef
 
 **API — pass `?layout=` query param:**
 
-The dashboard and API calls accept an optional `?layout=` query param to target a specific variant:
+The panel and API calls accept an optional `?layout=` query param to target a specific variant:
 
 ```
 GET  /ui-manager/api/pages/home/sections/hero?layout=homepage
@@ -535,7 +522,7 @@ This generates rules `fields.title.en` and `fields.title.ar` (for every locale i
 
 ### Inline error display
 
-The dashboard automatically shows field-level 422 validation errors below each input — both in `SectionForm` and `RepeatableItemForm`.
+The panel automatically shows field-level 422 validation errors below each input — both in `SectionForm` and `RepeatableItemForm`.
 
 ---
 
@@ -562,7 +549,7 @@ class SocialLinks extends Section implements Repeatable
 }
 ```
 
-The dashboard automatically switches to full CRUD mode with drag-and-drop reordering.
+The panel automatically switches to full CRUD mode with drag-and-drop reordering.
 
 **Blade:**
 
@@ -579,7 +566,7 @@ The dashboard automatically switches to full CRUD mode with drag-and-drop reorde
 
 ### List Label Field
 
-By default the dashboard shows the first non-empty string value as the label in each item row. Set `$listField` to pin a specific field:
+By default the panel shows the first non-empty string value as the label in each item row. Set `$listField` to pin a specific field:
 
 ```php
 class SocialLinks extends Section implements Repeatable
@@ -599,7 +586,7 @@ class SocialLinks extends Section implements Repeatable
 }
 ```
 
-Works with translatable fields too — the dashboard picks the value for the active page locale.
+Works with translatable fields too — the panel picks the value for the active page locale.
 
 ### Repeatable Section Defaults
 
@@ -737,7 +724,7 @@ public function fields(): array
 }
 ```
 
-`->hasVariable()` controls two things in the dashboard:
+`->hasVariable()` controls two things in the panel:
 - A **copy button** appears next to the field label showing the variable placeholder(s) for that field
 - The field is listed in the **Variable Browser** panel so editors can discover and copy it
 
@@ -776,7 +763,7 @@ Field::url('whatsapp_link'),                  // stores "https://wa.me/%general.
 %product.price:currency%             price — currency code
 ```
 
-### Variable picker in the dashboard
+### Variable picker in the panel
 
 When `->hasVariable()` is set on a field, a **copy button** appears next to the field label:
 
@@ -823,10 +810,6 @@ public function boot(VariableRegistry $registry): void
     $registry->register('mail.support', fn () => config('mail.from.address'));
 }
 ```
-
-### Variable Browser in the dashboard
-
-The **Variables** button in the header opens a searchable slide-in panel listing every registered variable with one-click copy.
 
 ---
 
@@ -886,29 +869,107 @@ The **Variables** button in the header opens a searchable slide-in panel listing
 
 ---
 
-## Dashboard
+## Embedded Panel
 
-Access the dashboard at `/ui-manager` (configured via `routes.prefix`).
+The `UiManagerPanel` component lets you drop the full pages-and-sections editor into **any existing dashboard** (AdminLTE, Filament, etc.). It is self-contained: it fetches its own data, manages its own state, and uses hash-based navigation so the host page URL never changes.
 
-### Features
+### Hash navigation
 
-| Feature | Description |
-|---------|-------------|
-| **Page sidebar** | All registered pages listed; click to open |
-| **Section tabs** | One tab per visible section on a page |
-| **Inline edit forms** | No intermediate preview step; form shown immediately on tab click |
-| **Field components** | Auto-selected by field type (text, editor, image, color, date, price, …) |
-| **Translatable fields** | Locale tab bar rendered above the input for each configured locale |
-| **Deferred image upload** | File held in memory until form submit; no wasted uploads on discard |
-| **Repeatable CRUD** | Add / edit / delete / drag-to-reorder items; insertion line shows drop target |
-| **Toast notifications** | Save success and errors shown as slide-in toasts (bottom-right) |
-| **Keyboard shortcut** | `Ctrl+S` / `Cmd+S` submits the active form |
-| **Unsaved-changes warning** | Browser warns before closing/refreshing a page with unsaved edits |
-| **Loading skeleton** | Animated placeholder shown while section data is fetching |
-| **Inline validation errors** | Field-level 422 errors from the API are displayed below each field |
-| **Variable picker** | Fields marked `->hasVariable()` show a copy button (or dropdown for multiple formats) next to their label |
-| **Variable autocomplete** | Typing `%` in any text, textarea, or URL input opens a filtered inline dropdown of all known variables |
-| **Variable Browser** | "Variables" button in the header opens a searchable slide-in panel |
+The panel encodes its state in the URL hash, leaving the host page's path and query string untouched.
+
+| Hash | Effect |
+|------|--------|
+| *(none)* | Opens first page, first section |
+| `#uim:home` | Opens the **home** page, first section |
+| `#uim:home:banner` | Opens the **home** page, **banner** section |
+
+Clicking Back/Forward in the browser moves through hash states as expected. The hash is written with `history.replaceState`, so it never creates history entries of its own.
+
+---
+
+### Option 1 — Blade directive (for any Blade view in your host dashboard)
+
+After running `php artisan ui-manager:install`, include the panel anywhere with a single directive:
+
+```blade
+{{-- resources/views/admin/ui-manager.blade.php --}}
+@extends('adminlte::page')
+
+@section('content')
+    <div class="container-fluid">
+        @uiManagerPanel
+    </div>
+@endsection
+```
+
+Pass overrides to merge on top of the package config:
+
+```blade
+@uiManagerPanel(['locales' => ['en', 'ar'], 'defaultLocale' => 'ar'])
+```
+
+The directive outputs `<link>` tags (Bootstrap + Tailwind CSS, scoped), a mount `<div>`, and `<script type="module">` tags — all resolved from the published manifest. **No manual asset registration needed.**
+
+> **Prerequisite** — publish assets if you haven't already:
+> ```bash
+> php artisan vendor:publish --tag=ui-manager-assets
+> ```
+
+---
+
+### Option 2 — Auto-mount via data attribute (raw HTML)
+
+Include the panel bundle and CSS in any HTML page, then add the mount element:
+
+```html
+<head>
+    {{-- Published asset URL — resolve from public/vendor/ui-manager/manifest.json --}}
+    <link rel="stylesheet" href="/vendor/ui-manager/assets/panel-[hash].css">
+</head>
+
+<body>
+    <!-- The panel mounts here automatically -->
+    <div data-ui-manager-panel></div>
+
+    <script type="module" src="/vendor/ui-manager/panel-[hash].js"></script>
+</body>
+```
+
+Pass a config override via the `data-config` attribute (JSON):
+
+```html
+<div
+  data-ui-manager-panel
+  data-config='{"apiBase":"/ui-manager/api","locales":["en","ar"],"defaultLocale":"ar"}'
+></div>
+```
+
+> Use `@uiManagerPanel` (Option 1) whenever possible — the Blade directive resolves the hashed filenames automatically.
+
+---
+
+### How it works
+
+```
+Host page (AdminLTE, Filament, custom Blade)
+└── @uiManagerPanel  ──────────────────────────────────────────────┐
+    │ <link> Bootstrap CSS (scoped under .uim-bs — no leakage)     │
+    │ <link> Tailwind CSS (form components)                         │
+    │ <div data-ui-manager-panel>                                   │
+    │   ┌──────────────────────────────────────────────────────┐    │
+    │   │  Pages   [Home ●] [About] [Contact]                  │    │
+    │   ├──────────────┬───────────────────────────────────────┤    │
+    │   │  Sections    │  Edit: Banner                         │    │
+    │   │  > Banner ●  │  Title (EN) [__________________]      │    │
+    │   │    Featured  │  Title (AR) [__________________]      │    │
+    │   │    Most Loved│  Image      [📷 upload]                │    │
+    │   │              │                         [Save]         │    │
+    │   └──────────────┴───────────────────────────────────────┘    │
+    │ <script> panel bundle                                         │
+    └───────────────────────────────────────────────────────────────┘
+```
+
+The Bootstrap CSS is fully isolated under `.uim-bs` — it will **not** override AdminLTE's Bootstrap 4/5 styles or any other framework on the host page.
 
 ---
 
@@ -992,11 +1053,11 @@ class RatingField extends BaseField
 }
 ```
 
-2. **Create a Vue component** for the dashboard.
+2. **Create a Vue component** for the panel.
 
 3. **Register it** in `FieldRenderer.vue` under the `'rating'` type case.
 
-4. **Rebuild assets:** `npm run build` (only needed when modifying the dashboard frontend).
+4. **Rebuild assets:** `npm run build` (only needed when modifying the panel frontend).
 
 ### Register custom variables
 
@@ -1087,7 +1148,6 @@ src/
 │   └── PriceField.php
 ├── Http/
 │   ├── Controllers/
-│   │   ├── DashboardController.php
 │   │   └── Api/
 │   │       ├── PageController.php
 │   │       ├── SectionController.php    validates reorder IDs; no events
@@ -1121,7 +1181,7 @@ src/
 ```
 PHP Section class (fields() definition)
         ↓
-Dashboard reads via  GET /ui-manager/api/pages/{page}/sections/{section}
+Panel reads via  GET /ui-manager/api/pages/{page}/sections/{section}
         ↓
 User edits and submits
         ↓

@@ -15,6 +15,15 @@ export default defineConfig({
     tailwindcss(),
   ],
 
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // Bootstrap 5.3 uses legacy Sass APIs — silence the noise.
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions', 'if-function'],
+      },
+    },
+  },
+
   resolve: {
     alias: {
       '@': resolve(__dirname, 'resources/js/ui-manager'),
@@ -30,7 +39,7 @@ export default defineConfig({
     manifest: 'manifest.json',
     rollupOptions: {
       input: {
-        app: resolve(__dirname, 'resources/js/ui-manager/app.js'),
+        panel: resolve(__dirname, 'resources/js/ui-manager/panel.js'),
       },
       output: {
         entryFileNames: '[name]-[hash].js',

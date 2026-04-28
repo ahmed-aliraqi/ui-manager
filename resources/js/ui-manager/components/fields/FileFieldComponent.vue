@@ -1,18 +1,18 @@
 <template>
-  <div class="space-y-2">
+  <div>
     <!-- Existing file(s) -->
-    <div v-if="files.length" class="space-y-1.5">
+    <div v-if="files.length" class="mb-2">
       <div
         v-for="(file, idx) in files"
         :key="idx"
-        class="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm"
+        class="d-flex align-items-center gap-2 border rounded px-3 py-2 mb-1 bg-light"
       >
-        <FileIcon class="w-4 h-4 text-muted-foreground shrink-0" />
-        <a :href="file.url" target="_blank" class="flex-1 truncate text-primary hover:underline text-xs">
+        <FileIcon class="flex-shrink-0" style="width:1rem;height:1rem;" />
+        <a :href="file.url" target="_blank" class="text-primary text-truncate flex-grow-1" style="font-size:0.75rem;">
           {{ file.filename || file.url }}
         </a>
-        <button type="button" @click="removeFile(idx)" class="text-muted-foreground hover:text-destructive">
-          <XIcon class="w-3.5 h-3.5" />
+        <button type="button" @click="removeFile(idx)" class="btn btn-link btn-sm text-danger p-0 ms-auto">
+          <XIcon style="width:0.875rem;height:0.875rem;" />
         </button>
       </div>
     </div>
@@ -23,9 +23,10 @@
         type="button"
         @click="fileInput?.click()"
         :disabled="uploading"
-        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm hover:bg-muted transition-colors disabled:opacity-50"
+        class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
       >
-        <UploadIcon class="w-3.5 h-3.5" />
+        <span v-if="uploading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+        <UploadIcon v-else style="width:0.875rem;height:0.875rem;" />
         {{ field.multiple ? 'Add file(s)' : 'Upload file' }}
       </button>
 
@@ -34,15 +35,15 @@
         type="file"
         :accept="field.accept?.join(',') || '*'"
         :multiple="field.multiple"
-        class="hidden"
+        class="d-none"
         @change="onFileChange"
       />
     </div>
 
-    <p v-if="uploading" class="text-xs text-muted-foreground flex items-center gap-1">
-      <LoaderIcon class="w-3 h-3 animate-spin" /> Uploading…
+    <p v-if="uploading" class="text-muted small d-flex align-items-center gap-1 mt-1">
+      Uploading…
     </p>
-    <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
+    <p v-if="error" class="text-danger small mt-1">{{ error }}</p>
   </div>
 </template>
 
