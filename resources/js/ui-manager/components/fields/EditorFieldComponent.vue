@@ -1,5 +1,5 @@
 <template>
-  <div class="border rounded overflow-hidden">
+  <div style="border:1px solid #ced4da;border-radius:.375rem;overflow:hidden">
     <!-- Toolbar -->
     <div class="d-flex flex-wrap gap-1 p-2 border-bottom bg-light">
       <button

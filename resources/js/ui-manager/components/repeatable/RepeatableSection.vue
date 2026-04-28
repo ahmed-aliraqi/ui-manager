@@ -63,6 +63,7 @@
                 :item="item"
                 :page="page"
                 :section="section"
+                :layout="layout"
                 @saved="onItemSaved(idx, $event)"
               />
             </div>
@@ -103,6 +104,7 @@
             :item="null"
             :page="page"
             :section="section"
+            :layout="layout"
             @saved="onNewItemSaved"
             @cancel="showAddForm = false"
           />
@@ -125,6 +127,7 @@ import RepeatableItemForm from './RepeatableItemForm.vue'
 const props = defineProps({
   page:       String,
   section:    String,
+  layout:     { type: String, default: 'default' },
   definition: Object,
 })
 
@@ -141,7 +144,7 @@ const dropTargetIdx = ref(null)
 onMounted(async () => {
   loading.value = true
   try {
-    const data = await store.fetchSection(props.page, props.section)
+    const data = await store.fetchSection(props.page, props.section, props.layout)
     items.value = data.items ?? []
 
     items.value.forEach((item, idx) => {
@@ -188,7 +191,7 @@ function toggleExpand(key) {
 async function deleteItem(item, idx) {
   if (!confirm('Delete this item?')) return
   try {
-    await store.deleteItem(props.page, props.section, item.id)
+    await store.deleteItem(props.page, props.section, item.id, props.layout)
     items.value.splice(idx, 1)
     toast({ title: 'Item deleted', variant: 'success' })
   } catch (e) {
@@ -242,7 +245,7 @@ async function onDragEnd() {
   if (ids.length < 2) return
 
   try {
-    await store.reorderItems(props.page, props.section, ids)
+    await store.reorderItems(props.page, props.section, ids, props.layout)
   } catch (err) {
     toast({ title: 'Reorder failed', description: 'Please try again.', variant: 'error' })
     console.error('[ui-manager] reorderItems failed:', err)

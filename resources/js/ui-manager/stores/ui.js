@@ -32,33 +32,37 @@ export const useUiStore = defineStore('ui', () => {
     variables.value = data.data
   }
 
-  async function saveSectionFields(page, section, fields) {
-    const { data } = await api.put(`/pages/${page}/sections/${section}`, { fields })
+  function layoutParam(layout) {
+    return layout && layout !== 'default' ? `?layout=${layout}` : ''
+  }
+
+  async function saveSectionFields(page, section, fields, layout = null) {
+    const { data } = await api.put(`/pages/${page}/sections/${section}${layoutParam(layout)}`, { fields })
     return data.data
   }
 
-  async function fetchSection(page, section) {
-    const { data } = await api.get(`/pages/${page}/sections/${section}`)
+  async function fetchSection(page, section, layout = null) {
+    const { data } = await api.get(`/pages/${page}/sections/${section}${layoutParam(layout)}`)
     return data.data
   }
 
   // Repeatable operations
-  async function addItem(page, section, fields) {
-    const { data } = await api.post(`/pages/${page}/sections/${section}/items`, { fields })
+  async function addItem(page, section, fields, layout = null) {
+    const { data } = await api.post(`/pages/${page}/sections/${section}/items${layoutParam(layout)}`, { fields })
     return data.data
   }
 
-  async function updateItem(page, section, itemId, fields) {
-    const { data } = await api.put(`/pages/${page}/sections/${section}/items/${itemId}`, { fields })
+  async function updateItem(page, section, itemId, fields, layout = null) {
+    const { data } = await api.put(`/pages/${page}/sections/${section}/items/${itemId}${layoutParam(layout)}`, { fields })
     return data.data
   }
 
-  async function deleteItem(page, section, itemId) {
-    await api.delete(`/pages/${page}/sections/${section}/items/${itemId}`)
+  async function deleteItem(page, section, itemId, layout = null) {
+    await api.delete(`/pages/${page}/sections/${section}/items/${itemId}${layoutParam(layout)}`)
   }
 
-  async function reorderItems(page, section, order) {
-    await api.post(`/pages/${page}/sections/${section}/reorder`, { order })
+  async function reorderItems(page, section, order, layout = null) {
+    await api.post(`/pages/${page}/sections/${section}/reorder${layoutParam(layout)}`, { order })
   }
 
   return {

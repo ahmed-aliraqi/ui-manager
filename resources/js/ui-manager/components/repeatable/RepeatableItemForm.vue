@@ -46,6 +46,7 @@ const props = defineProps({
   item:       { default: null },
   page:       String,
   section:    String,
+  layout:     { type: String, default: 'default' },
 })
 
 const emit = defineEmits(['saved', 'cancel'])
@@ -123,9 +124,9 @@ async function handleSave() {
     const fields = await resolvePendingUploads({ ...form })
     let result
     if (isNew.value) {
-      result = await store.addItem(props.page, props.section, fields)
+      result = await store.addItem(props.page, props.section, fields, props.layout)
     } else {
-      result = await store.updateItem(props.page, props.section, props.item.id, fields)
+      result = await store.updateItem(props.page, props.section, props.item.id, fields, props.layout)
     }
     Object.assign(form, fields)
     toast({ title: 'Item saved', variant: 'success' })

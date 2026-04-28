@@ -34,10 +34,24 @@
     <!-- ── Main panel ────────────────────────────────────────────────── -->
     <template v-else-if="store.pages.length">
 
+      <!-- Layout nav (only when multiple layouts exist) -->
+      <div v-if="hasMultipleLayouts" class="d-flex gap-1 flex-nowrap overflow-auto mb-2 pb-1">
+        <button
+          v-for="layout in availableLayouts"
+          :key="layout"
+          type="button"
+          class="uim-panel__layout-btn text-nowrap"
+          :class="{ active: currentLayout === layout }"
+          @click="selectLayout(layout)"
+        >
+          {{ layout }}
+        </button>
+      </div>
+
       <!-- Pages nav -->
       <div class="d-flex gap-1 flex-nowrap overflow-auto mb-3 pb-1">
         <button
-          v-for="page in store.pages"
+          v-for="page in visiblePages"
           :key="page.name"
           type="button"
           class="uim-panel__page-btn text-nowrap"
@@ -53,7 +67,7 @@
 
         <!-- ── Sections sidebar card ──────────────────────────────── -->
         <div class="col-md-3">
-          <div class="card h-100" style="min-height:400px;border-radius:.5rem">
+          <div class="card h-100" style="min-height:400px;border-radius:.5rem;background:#fff">
             <div class="card-header py-2 px-3">
               <p class="mb-0 fw-semibold text-secondary text-uppercase" style="font-size:.7rem;letter-spacing:.06em">
                 Sections
@@ -100,16 +114,18 @@
               <template v-if="activeSectionDef">
                 <SectionForm
                   v-if="!activeSectionDef.repeatable"
-                  :key="activeSectionDef.name + currentPage"
+                  :key="activeSectionDef.name + currentPage + currentLayout"
                   :page="currentPage"
                   :section="activeSectionDef.name"
+                  :layout="currentLayout"
                   :definition="activeSectionDef"
                 />
                 <RepeatableSection
                   v-else
-                  :key="activeSectionDef.name + currentPage"
+                  :key="activeSectionDef.name + currentPage + currentLayout"
                   :page="currentPage"
                   :section="activeSectionDef.name"
+                  :layout="currentLayout"
                   :definition="activeSectionDef"
                 />
               </template>
@@ -144,65 +160,113 @@ const HASH_PREFIX = 'uim:'
 
 function parseHash() {
   const raw = window.location.hash.slice(1)
-  if (!raw.startsWith(HASH_PREFIX)) return { page: null, section: null }
+  if (!raw.startsWith(HASH_PREFIX)) return { layout: null, page: null, section: null }
   const parts = raw.slice(HASH_PREFIX.length).split(':')
-  return { page: parts[0] || null, section: parts[1] || null }
+  // Format: layout:page:section (3 parts) or layout:page (2 parts) or legacy page:section
+  if (parts.length >= 3) return { layout: parts[0] || null, page: parts[1] || null, section: parts[2] || null }
+  if (parts.length === 2) return { layout: parts[0] || null, page: parts[1] || null, section: null }
+  return { layout: null, page: parts[0] || null, section: null }
 }
 
-function writeHash(page, section) {
+function writeHash(layout, page, section) {
   const hash = section
-    ? `${HASH_PREFIX}${page}:${section}`
-    : `${HASH_PREFIX}${page}`
+    ? `${HASH_PREFIX}${layout}:${page}:${section}`
+    : `${HASH_PREFIX}${layout}:${page}`
   history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${hash}`)
 }
 
 const store = useUiStore()
+const currentLayout  = ref(null)
 const currentPage    = ref(null)
 const currentSection = ref(null)
+
+const availableLayouts = computed(() => {
+  const set = new Set()
+  store.pages.forEach(p => p.sections?.forEach(s => { if (s.visible) set.add(s.layout) }))
+  return [...set].sort()
+})
+
+const hasMultipleLayouts = computed(() => availableLayouts.value.length > 1)
+
+const visiblePages = computed(() =>
+  store.pages.filter(p =>
+    p.sections?.some(s => s.visible && s.layout === currentLayout.value)
+  )
+)
 
 const currentPageData = computed(() => store.pageMap[currentPage.value] ?? null)
 
 const visibleSections = computed(() =>
-  currentPageData.value?.sections?.filter(s => s.visible) ?? []
+  currentPageData.value?.sections?.filter(
+    s => s.visible && s.layout === currentLayout.value
+  ) ?? []
 )
 
 const activeSectionDef = computed(() =>
   visibleSections.value.find(s => s.name === currentSection.value) ?? null
 )
 
+function selectLayout(layoutName) {
+  currentLayout.value = layoutName
+  const pages = visiblePages.value
+  if (!pages.length) return
+  const keepPage = pages.find(p => p.name === currentPage.value)
+  selectPage(keepPage ? currentPage.value : pages[0].name)
+}
+
 function selectPage(pageName, sectionName = null) {
   currentPage.value = pageName
-  const sections = store.pageMap[pageName]?.sections?.filter(s => s.visible) ?? []
+  const sections = store.pageMap[pageName]?.sections?.filter(
+    s => s.visible && s.layout === currentLayout.value
+  ) ?? []
   currentSection.value = sectionName ?? sections[0]?.name ?? null
-  writeHash(currentPage.value, currentSection.value)
+  writeHash(currentLayout.value, currentPage.value, currentSection.value)
 }
 
 function selectSection(sectionName) {
   currentSection.value = sectionName
-  writeHash(currentPage.value, currentSection.value)
+  writeHash(currentLayout.value, currentPage.value, currentSection.value)
 }
 
 function applyHashOrDefaults() {
-  const { page, section } = parseHash()
-  const pages = store.pages
+  const { layout, page, section } = parseHash()
+  const layouts = availableLayouts.value
+  if (!layouts.length) return
+
+  const targetLayout = layout && layouts.includes(layout) ? layout : layouts[0]
+  currentLayout.value = targetLayout
+
+  const pages = store.pages.filter(p =>
+    p.sections?.some(s => s.visible && s.layout === targetLayout)
+  )
   if (!pages.length) return
-  const targetPage = page && store.pageMap[page] ? page : pages[0]?.name
+
+  const targetPage = page && pages.find(p => p.name === page) ? page : pages[0]?.name
   if (!targetPage) return
-  const sections = store.pageMap[targetPage]?.sections?.filter(s => s.visible) ?? []
+
+  const sections = store.pageMap[targetPage]?.sections?.filter(
+    s => s.visible && s.layout === targetLayout
+  ) ?? []
   const targetSection = section && sections.find(s => s.name === section)
     ? section
     : sections[0]?.name ?? null
+
   currentPage.value    = targetPage
   currentSection.value = targetSection
-  if (targetPage) writeHash(targetPage, targetSection)
+  if (targetPage) writeHash(targetLayout, targetPage, targetSection)
 }
 
 function onHashChange() {
-  const { page, section } = parseHash()
+  const { layout, page, section } = parseHash()
   if (!page) return
+  if (layout && layout !== currentLayout.value && availableLayouts.value.includes(layout)) {
+    currentLayout.value = layout
+  }
   if (page !== currentPage.value) {
     currentPage.value = page
-    const sections = store.pageMap[page]?.sections?.filter(s => s.visible) ?? []
+    const sections = store.pageMap[page]?.sections?.filter(
+      s => s.visible && s.layout === currentLayout.value
+    ) ?? []
     currentSection.value = section ?? sections[0]?.name ?? null
   } else if (section && section !== currentSection.value) {
     currentSection.value = section
@@ -225,7 +289,7 @@ watch(() => store.pages, (pages) => {
   if (pages.length && !currentPage.value) applyHashOrDefaults()
 })
 
-watch(currentPage, () => {
+watch([currentPage, currentLayout], () => {
   if (!activeSectionDef.value && visibleSections.value.length) {
     currentSection.value = visibleSections.value[0].name
   }
@@ -233,6 +297,30 @@ watch(currentPage, () => {
 </script>
 
 <style scoped>
+.uim-panel__layout-btn {
+  padding: .3rem .85rem;
+  border: 1px solid #adb5bd;
+  background: transparent;
+  border-radius: .375rem;
+  font-size: .8rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  transition: background .12s, color .12s, border-color .12s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.uim-panel__layout-btn:hover {
+  background: #e9ecef;
+  color: #343a40;
+}
+.uim-panel__layout-btn.active {
+  background: #343a40;
+  border-color: #343a40;
+  color: #fff;
+  font-weight: 600;
+}
+
 .uim-panel__page-btn {
   padding: .45rem 1rem;
   border: 1px solid #0d6efd;

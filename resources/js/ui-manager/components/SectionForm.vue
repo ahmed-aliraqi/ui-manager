@@ -43,6 +43,7 @@ import SkeletonLoader from './SkeletonLoader.vue'
 const props = defineProps({
   page:       String,
   section:    String,
+  layout:     { type: String, default: 'default' },
   definition: Object,
 })
 
@@ -93,7 +94,7 @@ function initFieldValue(fieldDef, storedValue) {
 async function loadSection() {
   loading.value = true
   try {
-    const data = await store.fetchSection(props.page, props.section)
+    const data = await store.fetchSection(props.page, props.section, props.layout)
     const fields = data.fields || {}
     props.definition.fields.forEach(f => {
       form[f.name] = initFieldValue(f, fields[f.name])
@@ -130,7 +131,7 @@ async function handleSave() {
   Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
   try {
     const fields = await resolvePendingUploads({ ...form })
-    await store.saveSectionFields(props.page, props.section, fields)
+    await store.saveSectionFields(props.page, props.section, fields, props.layout)
     Object.assign(form, fields)
     isDirty.value = false
     toast({ title: 'Saved', variant: 'success' })
